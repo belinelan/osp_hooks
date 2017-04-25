@@ -1,5 +1,5 @@
 ---
-- name: director playbook
+- name: rollback and provision director vm
   hosts: localhost
   
   tasks:
@@ -23,7 +23,6 @@
           hostname: "{{ lookup('ini', 'vm_hostname section=director file=settings.ini') }}"
           password: "{{ lookup('ini', 'vm_password section=director file=settings.ini') }}"
         state: present
-      tag: ['provision']
 
     - name: power on the vm
       vmware_guest:
@@ -35,7 +34,6 @@
         state: poweredon
         wait_for_ip_address: yes
       delegate_to: localhost
-      tags: ['provision']
 
     - name: remove the vm
       vmware_guest:
@@ -45,18 +43,53 @@
         validate_certs: no
         name: "{{ lookup('ini', 'vm_name section=director file=settings.ini') }}"
         state: absent
-      tags: ['teardown']
 
 - name: initialize director
   hosts: director
 
   tasks:
-    - name: prepare a crypted password
-      command: mkpasswd --method=sha-512 {{ lookup('ini', 'vm_password section=director file=settings.ini') }}
-      register: mkpasswd_out
+    - name: preare stack user
+      block:
+        - name: prepare a crypted password
+          command: mkpasswd --method=sha-512 {{ lookup('ini', 'vm_password section=director file=settings.ini') }}
+          register: mkpasswd_out
 
-    - name: add user stack
-      user:
-        name: stack
-        password: "{{ mkpasswd_out.stdout }}"
+        - name: add user stack
+          user:
+            name: stack
+            password: "{{ mkpasswd_out.stdout }}"
 
+        - name: passwordless sudo for user stack
+          template:
+            src: tempaltes/sudoers.stack
+            dest: /etc/sudoers.d/stack
+            mode: 0440
+
+    - name: TBD - configure network such as bridge ???
+      block:
+        - name: set hostname
+          shell: |
+            hostnamectl set-hostname {{ vm_public_fqdn }}
+            hostnamectl set-hostname --transient {{ vm_public_fqdn }}
+
+        - name: update hosts
+          vars:
+            ip: "{{ lookup('ini', 'vm_public_ip section=director file=settings.ini') }}"
+            hostname: "{{ lookup('ini', 'vm_hostname section=director file=settings.ini') }}"
+            fqdn: "{{ lookup('ini', 'vm_fqdn section=director file=settings.ini') }}"
+          template:
+            src: templates/hosts
+            dest: /etc/hosts
+
+    - name: prepare director
+      block:
+        - name: create requried directories
+          file:
+            path: "{{ item }}"
+            state: directory
+          with_items:
+            - images
+            - templates
+      become: yes
+      become_user: stack
+      become_method: su
