@@ -1,6 +1,8 @@
 ---
 - name: rollback and provision director vm
   hosts: localhost
+  tags:
+    - run
   
   tasks:
     - name: provision a vm
@@ -9,6 +11,7 @@
         username: "{{ lookup('ini', 'vcenter_user section=director file=settings.ini') }}"
         password: "{{ lookup('ini', 'vcenter_pass section=director file=settings.ini') }}"
         validate_certs: no
+        esxi_hostname: "{{ lookup('ini', 'vcenter_esxi section=director file=settings.ini') }}"
         name: "{{ lookup('ini', 'vm_name section=director file=settings.ini') }}"
         template: "{{ lookup('ini', 'vm_template section=director file=settings.ini') }}"
         networks:
@@ -43,6 +46,8 @@
         validate_certs: no
         name: "{{ lookup('ini', 'vm_name section=director file=settings.ini') }}"
         state: absent
+      tags:
+        - norun
 
 - name: initialize director
   hosts: director
@@ -50,14 +55,10 @@
   tasks:
     - name: preare stack user
       block:
-        - name: prepare a crypted password
-          command: mkpasswd --method=sha-512 {{ lookup('ini', 'vm_password section=director file=settings.ini') }}
-          register: mkpasswd_out
-
         - name: add user stack
           user:
             name: stack
-            password: "{{ mkpasswd_out.stdout }}"
+            password: "{{ lookup('ini', 'vm_password section=director file=settings.ini') | password_hash('sha512') }}"
 
         - name: passwordless sudo for user stack
           template:
