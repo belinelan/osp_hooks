@@ -1,8 +1,6 @@
 ---
 - name: rollback and provision director vm
   hosts: localhost
-  tags:
-    - run
   
   tasks:
     - name: provision a vm
@@ -11,6 +9,7 @@
         username: "{{ lookup('ini', 'vcenter_user section=director file=settings.ini') }}"
         password: "{{ lookup('ini', 'vcenter_pass section=director file=settings.ini') }}"
         validate_certs: no
+        datacenter: "{{ lookup('ini', 'vcenter_datacenter section=director file=settings.ini') }}"
         esxi_hostname: "{{ lookup('ini', 'vcenter_esxi section=director file=settings.ini') }}"
         name: "{{ lookup('ini', 'vm_name section=director file=settings.ini') }}"
         template: "{{ lookup('ini', 'vm_template section=director file=settings.ini') }}"
@@ -33,6 +32,7 @@
         username: "{{ lookup('ini', 'vcenter_user section=director file=settings.ini') }}"
         password: "{{ lookup('ini', 'vcenter_pass section=director file=settings.ini') }}"
         validate_certs: no
+        datacenter: "{{ lookup('ini', 'vcenter_datacenter section=director file=settings.ini') }}"
         name: "{{ lookup('ini', 'vm_name section=director file=settings.ini') }}"
         state: poweredon
         wait_for_ip_address: yes
@@ -44,10 +44,9 @@
         username: "{{ lookup('ini', 'vcenter_user section=director file=settings.ini') }}"
         password: "{{ lookup('ini', 'vcenter_pass section=director file=settings.ini') }}"
         validate_certs: no
+        datacenter: "{{ lookup('ini', 'vcenter_datacenter section=director file=settings.ini') }}"
         name: "{{ lookup('ini', 'vm_name section=director file=settings.ini') }}"
         state: absent
-      tags:
-        - norun
 
 - name: initialize director
   hosts: director
