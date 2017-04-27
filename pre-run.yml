@@ -1,7 +1,7 @@
 ---
 - name: rollback and provision director vm
   hosts: localhost
-  
+
   tasks:
     - name: provision a vm
       vmware_guest:
@@ -48,7 +48,7 @@
         name: "{{ lookup('ini', 'vm_name section=director file=settings.ini') }}"
         state: absent
 
-- name: initialize director
+- name: prepare undercloud
   hosts: director
 
   tasks:
@@ -65,7 +65,18 @@
             dest: /etc/sudoers.d/stack
             mode: 0440
 
-    - name: TBD - configure network such as bridge ???
+        - name: create requried directories
+          file:
+            path: "{{ item }}"
+            state: directory
+          with_items:
+            - images
+            - templates
+          become: yes
+          become_user: stack
+          become_method: su
+
+    - name: configure system
       block:
         - name: set hostname
           shell: |
@@ -81,15 +92,33 @@
             src: templates/hosts
             dest: /etc/hosts
 
-    - name: prepare director
-      block:
-        - name: create requried directories
-          file:
-            path: "{{ item }}"
-            state: directory
-          with_items:
-            - images
-            - templates
-      become: yes
-      become_user: stack
-      become_method: su
+        - name: register system
+          shell: |
+            subscription-manager register \
+              --username {{ lookup('ini', 'subscription_user section=undercloud file=settings.ini') }}\
+              --password {{ lookup('ini', 'subscription_pass section=undercloud file=settings.ini') }}
+            subscription-manager refresh
+            IFS="\n"
+            for repo in $(echo {{ lookup('ini', 'osp_repos section=undercloud file=settings.ini') }} | tr ",", "\n" | sed -e 's/^ \+//'); do
+              subscription-manager attach --pool=$(
+                  subscription-manager list --available --all | grep '^\(Subscription Name:\|Pool ID:\)' |\
+                    sed -ne "/${repo}/{n;s/[ \t]\+//g;p}" |\
+                    cut -d':' -f2
+              )
+            done
+            subscription-manager repos --disable=*
+            for repo in $(echo {{ lookup('ini', 'sys_repos section=undercloud file=settings.ini') }} | tr ",", "\n" | sed -e 's/^ \+//'); do
+              subscription-manager repos --enable=${repo}
+            done
+            yum update -y
+            shutdown -r now
+
+        #- name: Wait for OS come back online
+        #  wait_for_connection:
+        #    delay: 60
+        #    timeout: 300
+
+        - name: install director pacakges
+          yum:
+            name: python-tripleoclient
+            state: present
