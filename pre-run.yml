@@ -122,3 +122,20 @@
           yum:
             name: python-tripleoclient
             state: present
+
+        - name: configure director
+          shell: |
+            cp /usr/share/instack-undercloud/undercloud.conf.sample ~/undercloud.conf
+            sed -i "s/^local_ip.*/local_ip = {{ lookup(ini, 'local_ip section=undercloud file=settings.ini') }}/; \
+                    s/^network_gateway.*/network_gateway = {{ lookup(ini, 'network_gateway section=undercloud file=settings.ini') }}/; \
+                    s/^local_interface.*/local_interface = {{ lookup(ini, 'local_interface section=undercloud file=settings.ini') }}/; \
+                    s/^network_cidr.*/network_cidr = {{ lookup(ini, 'network_cidr section=undercloud file=settings.ini') }}/; \
+                    s/^masquerade_network.*/masquerade_network = {{ lookup(ini, 'masquerade_network section=undercloud file=settings.ini') }}/; \
+                    s/^dhcp_start.*/dhcp_start = {{ lookup(ini, 'dhcp_start section=undercloud file=settings.ini') }}/; \
+                    s/^dhcp_end.*/dhcp_end = {{ lookup(ini, 'dhcp_end section=undercloud file=settings.ini') }}/; \
+                    s/^inspection_iprange.*/inspection_iprange = {{ lookup(ini, 'inspection_iprange section=undercloud file=settings.ini') }}/;" \
+            undercloud.conf
+            openstack undercloud install
+          become: yes
+          become_user: stack
+          become_method: su
