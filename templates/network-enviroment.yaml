@@ -1,0 +1,34 @@
+# This template configures each role to use a pair of bonded nics (nic2 and
+# nic3) and configures an IP address on each relevant isolated network
+# for each role. This template assumes use of network-isolation.yaml.
+#
+# FIXME: if/when we add functionality to heatclient to include heat
+# environment files we should think about using it here to automatically
+# include network-isolation.yaml.
+resource_registry:
+  OS::TripleO::BlockStorage::Net::SoftwareConfig: /home/stack/templates/nic-configs/cinder-storage.yaml
+  OS::TripleO::Compute::Net::SoftwareConfig: /home/stack/templates/nic-configs/compute.yaml
+  OS::TripleO::Controller::Net::SoftwareConfig: /home/stack/templates/nic-configs/controller.yaml
+  OS::TripleO::ObjectStorage::Net::SoftwareConfig: /home/stack/templates/nic-configs/swift-storage.yaml
+  OS::TripleO::CephStorage::Net::SoftwareConfig: /home/stack/templates/nic-configs/ceph-storage.yaml
+
+parameter_defaults:
+  # This sets 'external_network_bridge' in l3_agent.ini to an empty string
+  # so that external networks act like provider bridge networks (they
+  # will plug into br-int instead of br-ex)
+  ExternalNetCidr: {{ external_net_cidr }}
+  ExternalAllocationPools: [{'start': '{{ external_pools_start }}', 'end': '{{ external_pools_end }}'}]
+  ExternalNetworkVlanID: {{ external_vlan_id }}
+  # Set to the router gateway on the external network
+  ExternalInterfaceDefaultRoute: {{ external_interface_route }}
+  #     # Gateway router for the provisioning network (or Undercloud IP)
+  ControlPlaneDefaultRoute: {{ control_plan_route }}
+  #         # The IP address of the EC2 metadata server. Generally the IP of the Undercloud
+  EC2MetadataIp: {{ control_plan_route }}
+  #             # Define the DNS servers (maximum 2) for the overcloud nodes
+  DnsServers: ["8.8.8.8","8.8.4.4"]
+  NeutronExternalNetworkBridge: "''"
+  ControllerHostnameFormat:  snowctl0%index%
+  ComputeHostnameFormat: snowcom0%index% 
+
+

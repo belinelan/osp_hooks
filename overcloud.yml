@@ -1,0 +1,98 @@
+---
+- name: handware introspectiona and configure overcloud
+  hosts: localhost
+  vars_files: 
+    - var/main.yml
+#verify vars_files
+
+  tasks:
+    - name: install overcloud images
+      become: true
+      yum: 
+        name: {{item}}
+        with_items: 
+          - rhosp-director-images
+          - rhosp-director-images-ipa
+        state: present
+
+    - name: untar and upload images
+      shell: |
+        for i in /usr/share/rhosp-director-images/overcloud-full-latest-10.0.tar \
+        /usr/share/rhosp-director-images/ironic-python-agent-latest-10.0.tar; \
+        do tar -xvf /home/stack/image/$i; done
+        source /home/stack/stackrc
+        openstack overcloud image upload --image-path /home/stack/images/
+        #need to do any checkings here?
+
+    - name: Get neutron subnet uuid
+      shell: |
+        source /home/stack/stackrc
+        neutron subnet-list -c id -f value
+        register: neutron_subnet_uuid
+
+    - debug: msg="neutron_subnet_uuid is {{ neutron_subnet_uuid.stdout }}
+
+    - name: setup nameserver for undercloud neutron subnet
+      shell: |
+        source /home/stack/stackrc
+        neutron subnet-update {{ neutron_subnet_uuid.stdout }} \
+        --dns-nameserver 8.8.8.8
+      # why need . stdout
+
+    - name: add ironic node to undercloud
+      os_ironic:
+        cloud: "devstack"
+        driver: "pxe_ipmitool"
+        uuid: "00000000-0000-0000-0000-000000000002"
+        properties:
+        cpus: 2
+        cpu_arch: "x86_64"
+        ram: 8192
+        disk_size: 64
+        nics:
+          - mac: "dd:ee:ff:dd:ee:ff"
+        driver_info:
+          power:
+            ipmi_address: "1.2.3.4"
+            ipmi_username: "admin"
+            ipmi_password: "adminpass"
+        chassis_uuid: "00000000-0000-0000-0000-000000000001"
+          #further figure out, and also how to work for two nodes,http://docs.ansible.com/ansible/os_ironic_module.html
+
+     
+    - name: hardware introspection
+      shell: 
+        for node in $(openstack baremetal node list -c UUID -f value) ; do openstack baremetal node manage $node ; done
+      os_ironic_inspect:
+        name: "testnode1"
+        #http://docs.ansible.com/ansible/os_ironic_inspect_module.html
+
+    - name: tagging node into profiles
+      shell: 
+        openstack baremetal node set --property capabilities='profile:compute,boot_option:local' 58c3d07e-24f2-48a7-bbb6-6843f0e8ee13
+
+    - name: customerize network-environment.yaml
+      block:
+      template: 
+        src: /templates/network-environment.j2
+        dest: /home/stack/templates/network-environment.yaml
+        owner: stack
+        group: stack
+        mode: '777'
+
+    - name: customerize nic-configs
+      template:
+        src: /templates/nic-configs/{{ item }}.j2
+        dest: /home/stack/tempaltes/nic-configs/{{ item }}.yaml
+      with_items:
+        - controller
+        - compute
+
+    - name: deploy overcloud
+      shell:
+        openstack overcloud deploy --templates \
+        -e /usr/share/openstack-tripleo-heat-templates/environments/network-isolation.yaml \
+        -e /home/stack/templates/network-environment.yaml \
+        --control-flavor control --compute-flavor compute \
+        --ntp-server 10.254.67.22 --neutron-network-type vxlan --neutron-tunnel-types vxlan
+
