@@ -2,4 +2,4 @@
 *.retry
 *.swp
 *.orig
-inventory.orig
+*.real
