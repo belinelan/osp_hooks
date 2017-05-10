@@ -80,23 +80,25 @@
           become_method: su
 
     - name: configure system
+      vars:
+        vm_fqdn: "{{ lookup('ini', 'vm_fqdn section=director file=settings.ini') }}"
       block:
         - name: set hostname
           shell: |
-            hostnamectl set-hostname {{ vm_public_fqdn }}
-            hostnamectl set-hostname --transient {{ vm_public_fqdn }}
-          tags: ['run']
+            hostnamectl set-hostname {{ vm_fqdn }}
+            hostnamectl set-hostname --transient {{ vm_fqdn }}
 
         - name: update hosts
           vars:
             ip: "{{ lookup('ini', 'vm_public_ip section=director file=settings.ini') }}"
             hostname: "{{ lookup('ini', 'vm_hostname section=director file=settings.ini') }}"
-            fqdn: "{{ lookup('ini', 'vm_fqdn section=director file=settings.ini') }}"
+            fqdn: "{{ vm_fqdn }}"
           template:
             src: templates/hosts
             dest: /etc/hosts
 
         - name: register system
+          tags: ['run']
           shell: |
             subscription-manager register \
               --username {{ lookup('ini', 'subscription_user section=undercloud file=settings.ini') }}\
@@ -115,7 +117,7 @@
               subscription-manager repos --enable=${repo}
             done
             yum update -y
-            shutdown -r now
+            #shutdown -r now
 
         #- name: Wait for OS come back online
         #  wait_for_connection:
