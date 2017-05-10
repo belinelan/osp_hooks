@@ -1,6 +1,7 @@
 ---
 - name: rollback and provision director vm
   hosts: localhost
+  tags: ['provision']
 
   tasks:
     - name: provision a vm
@@ -47,9 +48,11 @@
         datacenter: "{{ lookup('ini', 'vcenter_datacenter section=director file=settings.ini') }}"
         name: "{{ lookup('ini', 'vm_name section=director file=settings.ini') }}"
         state: absent
+      tags: ['teardown']
 
 - name: prepare undercloud
   hosts: director
+  tags: ['undercloud']
 
   tasks:
     - name: preare stack user
@@ -61,7 +64,7 @@
 
         - name: passwordless sudo for user stack
           template:
-            src: tempaltes/sudoers.stack
+            src: templates/sudoers.stack
             dest: /etc/sudoers.d/stack
             mode: 0440
 
@@ -82,6 +85,7 @@
           shell: |
             hostnamectl set-hostname {{ vm_public_fqdn }}
             hostnamectl set-hostname --transient {{ vm_public_fqdn }}
+          tags: ['run']
 
         - name: update hosts
           vars:
@@ -99,15 +103,15 @@
               --password {{ lookup('ini', 'subscription_pass section=undercloud file=settings.ini') }}
             subscription-manager refresh
             IFS="\n"
-            for repo in $(echo {{ lookup('ini', 'osp_repos section=undercloud file=settings.ini') }} | tr ",", "\n" | sed -e 's/^ \+//'); do
+            for pool in $(echo {{ lookup('ini', 'osp_pools section=undercloud file=settings.ini') }} | tr "," "\n" | sed -e 's/^ \+//'); do
               subscription-manager attach --pool=$(
                   subscription-manager list --available --all | grep '^\(Subscription Name:\|Pool ID:\)' |\
-                    sed -ne "/${repo}/{n;s/[ \t]\+//g;p}" |\
+                    sed -ne "/${pool}/{n;s/[ \t]\+//g;p}" |\
                     cut -d':' -f2
               )
             done
             subscription-manager repos --disable=*
-            for repo in $(echo {{ lookup('ini', 'sys_repos section=undercloud file=settings.ini') }} | tr ",", "\n" | sed -e 's/^ \+//'); do
+            for repo in $(echo {{ lookup('ini', 'sys_repos section=undercloud file=settings.ini') }} | tr "," "\n" | sed -e 's/^ \+//'); do
               subscription-manager repos --enable=${repo}
             done
             yum update -y
