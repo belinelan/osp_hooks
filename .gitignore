@@ -1,3 +1,4 @@
 *.bak
 *.retry
 *.swp
+*.orig
