@@ -140,11 +140,11 @@
             name: python-tripleoclient
             state: present
 
-        - name: get an available NIC for PXE usage
+        - name: get the NIC for PXE usage
           shell: |
             for nic in $(ip link list | grep UP | grep -o 'ens[0-9]\+') ; do
-              ip addr show $nic | grep {{ lookup('ini', 'vm_public_ip section=director file=settings.ini') }} &>/dev/null
-              if [[ $? -ne 0 ]] ; then
+              ip addr show $nic | grep {{ lookup('ini', 'vm_private_ip section=director file=settings.ini') }} &>/dev/null
+              if [[ $? -eq 0 ]] ; then
                 echo $nic
                 break
               fi
