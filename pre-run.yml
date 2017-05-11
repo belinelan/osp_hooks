@@ -21,8 +21,8 @@
             gateway: "{{ lookup('ini', 'vm_public_gw section=director file=settings.ini') }}"
           # Although IP and Netmask are optional, error will be returned from vSphere API without them
           - name: "{{ lookup('ini', 'vm_private_pg section=director file=settings.ini') }}"
-            ip: "172.30.254.253"
-            netmask: "255.255.255.0"
+            ip: "{{ lookup('ini', 'vm_private_ip section=director file=settings.ini') }}"
+            netmask: "{{ lookup('ini', 'vm_private_netmask section=director file=settings.ini') }}"
           - name: "{{ lookup('ini', 'vm_private_pg section=director file=settings.ini') }}"
             ip: "172.30.254.254"
             netmask: "255.255.255.0"
@@ -152,9 +152,13 @@
           register: nic
 
         - name: configure director deployment conf
+          vars:
+            local_ip: "{{ lookup('ini', 'vm_private_ip section=director file=settings.ini') }}"
+            network_cidr: "{{ lookup('ini', 'network_cidr section=undercloud file=settings.ini' }}"
           shell: |
+            bitmask=$(echo "{{ network_cidr }}" | cut -d/ -f2)
             cp -f /usr/share/instack-undercloud/undercloud.conf.sample ~/undercloud.conf
-            sed -i "s%^#local_ip.*%local_ip = {{ lookup('ini', 'local_ip section=undercloud file=settings.ini') }}%; \
+            sed -i "s%^#local_ip.*%local_ip = {{ local_ip }}/${bitmask}%; \
                     s%^#network_gateway.*%network_gateway = {{ lookup('ini', 'network_gateway section=undercloud file=settings.ini') }}%; \
                     s%^#local_interface.*%local_interface = {{ nic.stdout }}%; \
                     s%^#network_cidr.*%network_cidr = {{ lookup('ini', 'network_cidr section=undercloud file=settings.ini') }}%; \
