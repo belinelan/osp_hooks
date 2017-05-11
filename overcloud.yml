@@ -1,35 +1,35 @@
 ---
-- name: handware introspectiona and configure overcloud
-  hosts: director
+- hosts: director
   vars_files: 
-    - var/main.yml
+    - var/main.yaml
 
   tasks:
     - name: install overcloud images
       become: true
       yum: 
-        name: {{item}}
-        with_items: 
-          - rhosp-director-images
-          - rhosp-director-images-ipa
-        state: present
+        name={{ item }} state=present
+      with_items: 
+        - rhosp-director-images
+        - rhosp-director-images-ipa
 
     - name: untar and upload images
+      become: yes
+      become_user: stack
       shell: |
         for i in /usr/share/rhosp-director-images/overcloud-full-latest-10.0.tar \
         /usr/share/rhosp-director-images/ironic-python-agent-latest-10.0.tar; \
-        do tar -xvf /home/stack/image/$i; done
+        do tar -xvf $i -C /home/stack/images; done
         source /home/stack/stackrc
         openstack overcloud image upload --image-path /home/stack/images/
-        #need to do any checkings here?
+        #need to change the path for different version?
 
     - name: Get neutron subnet uuid
       shell: |
         source /home/stack/stackrc
         neutron subnet-list -c id -f value
-        register: neutron_subnet_uuid
+      register: neutron_subnet_uuid
 
-    - debug: msg="neutron_subnet_uuid is {{ neutron_subnet_uuid.stdout }}
+    - debug: msg="neutron_subnet_uuid is {{ neutron_subnet_uuid.stdout }}"
 
     - name: setup nameserver for undercloud neutron subnet
       shell: |
@@ -40,31 +40,30 @@
 
     - name: add ironic node to undercloud
       os_ironic:
-        cloud: "devstack"
+        cloud: "undercloud"
         driver: "pxe_ipmitool"
-        uuid: "00000000-0000-0000-0000-000000000002"
         properties:
-        cpus: 2
-        cpu_arch: "x86_64"
-        ram: 8192
-        disk_size: 64
+          cpus: 24
+          cpu_arch: "x86_64"
+          ram: 257000
+          disk_size: 898
         nics:
-          - mac: "dd:ee:ff:dd:ee:ff"
+          - mac: "a0:36:9f:62:71:b5"
         driver_info:
           power:
-            ipmi_address: "1.2.3.4"
-            ipmi_username: "admin"
-            ipmi_password: "adminpass"
-        chassis_uuid: "00000000-0000-0000-0000-000000000001"
+            ipmi_address: "10.228.225.166"
+            ipmi_username: "lenovo"
+            ipmi_password: "len0vO"
           #further figure out, and also how to work for two nodes,http://docs.ansible.com/ansible/os_ironic_module.html
-
+      tags:
+        - ironic
      
-    - name: assign kernel and ramdisk images to all nodes, and start hardware introspection
+    - name: assign kernel and ramdisk images to all nodes and start hardware introspection
       shell: |
         openstack baremetal configure boot
         for node in $(openstack baremetal node list -c UUID -f value) ; do openstack baremetal node manage $node ; done
-      os_ironic_inspect:
-        name: "testnode1"
+#      os_ironic_inspect:
+#        name: "testnode1"
         #http://docs.ansible.com/ansible/os_ironic_inspect_module.html
 
     - name: tagging node into profiles
@@ -72,7 +71,6 @@
         openstack baremetal node set --property capabilities='profile:compute,boot_option:local' 58c3d07e-24f2-48a7-bbb6-6843f0e8ee13
 
     - name: customerize network-environment.yaml
-      block:
       template: 
         src: templates/network-environment.yaml.j2
         dest: /home/stack/templates/network-environment.yaml
