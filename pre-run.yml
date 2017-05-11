@@ -2,6 +2,7 @@
 - name: rollback and provision director vm
   hosts: localhost
   tags: ['provision']
+  gather_facts: no
 
   tasks:
     - name: provision a vm
@@ -53,6 +54,7 @@
 - name: prepare undercloud
   hosts: director
   tags: ['undercloud']
+  gather_facts: no
 
   tasks:
     - name: preare stack user
@@ -105,39 +107,27 @@
             subscription-manager refresh
 
         - name: attach pools
-          tags: ['run']
           shell: |
-            IFS="\n"
-            for pool in $(echo {{ lookup('ini', 'osp_pools section=undercloud file=settings.ini') }} | tr "," "\n" | sed -e 's/^ \+//'); do
-            # subscription-manager attach --pool=$(
-            #      subscription-manager list --available --all | grep '^\(Subscription Name:\|Pool ID:\)' |\
-            #        sed -ne "/${pool}/{n;s/[ \t]\+//g;p}" |\
-            #        cut -d':' -f2
-            #  )
-              echo $pool
+            pool_str=$(echo {{ lookup('ini', 'osp_pools section=undercloud file=settings.ini') }} | sed -e 's/, \+/:/' | tr ' ' '_')
+            i=0
+            for p in $(echo $pool_str | sed -e 's/:/ /') ; do
+              for id in $(subscription-manager list --available --pool-only --matches="$(echo $p | sed -e 's/_/ /g')"); do
+                id_array[$i]=$id
+                i=$(( $i + 1 ))
+              done
             done
 
-        - name: register system
-          shell: |
-            IFS="\n"
-            for pool in $(echo {{ lookup('ini', 'osp_pools section=undercloud file=settings.ini') }} | tr "," "\n" | sed -e 's/^ \+//'); do
-              subscription-manager attach --pool=$(
-                  subscription-manager list --available --all | grep '^\(Subscription Name:\|Pool ID:\)' |\
-                    sed -ne "/${pool}/{n;s/[ \t]\+//g;p}" |\
-                    cut -d':' -f2
-              )
+            for id in ${id_array[@]} ; do
+              subscription-manager attach --pool=$id
             done
-            subscription-manager repos --disable=*
-            for repo in $(echo {{ lookup('ini', 'sys_repos section=undercloud file=settings.ini') }} | tr "," "\n" | sed -e 's/^ \+//'); do
-              subscription-manager repos --enable=${repo}
-            done
-            yum update -y
-            shutdown -r now
 
-        #- name: Wait for OS come back online
-        #  wait_for_connection:
-        #    delay: 60
-        #    timeout: 300
+
+        - name: enable repos
+          shell: |
+            repo_str="{{ lookup('ini', 'sys_repos section=undercloud file=settings.ini') }}"
+            for repo in $(echo $repo_str | sed -e 's/, */ /g'); do
+              sudo subscription-manager repos --enable=$repo
+            done
 
         - name: install director pacakges
           yum:
