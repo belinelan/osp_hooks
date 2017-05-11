@@ -154,7 +154,7 @@
         - name: configure director deployment conf
           vars:
             local_ip: "{{ lookup('ini', 'vm_private_ip section=director file=settings.ini') }}"
-            network_cidr: "{{ lookup('ini', 'network_cidr section=undercloud file=settings.ini' }}"
+            network_cidr: "{{ lookup('ini', 'network_cidr section=undercloud file=settings.ini') }}"
           shell: |
             bitmask=$(echo "{{ network_cidr }}" | cut -d/ -f2)
             cp -f /usr/share/instack-undercloud/undercloud.conf.sample ~/undercloud.conf
