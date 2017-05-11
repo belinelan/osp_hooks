@@ -2,7 +2,6 @@
 - name: rollback and provision director vm
   hosts: localhost
   tags: ['provision']
-  gather_facts: no
 
   tasks:
     - name: provision a vm
@@ -20,12 +19,17 @@
             ip: "{{ lookup('ini', 'vm_public_ip section=director file=settings.ini') }}"
             netmask: "{{ lookup('ini', 'vm_public_netmask section=director file=settings.ini') }}"
             gateway: "{{ lookup('ini', 'vm_public_gw section=director file=settings.ini') }}"
+          # Although IP and Netmask are optional, error will be returned from vSphere API without them
           - name: "{{ lookup('ini', 'vm_private_pg section=director file=settings.ini') }}"
-            ip: "{{ lookup('ini', 'vm_private_ip section=director file=settings.ini') }}"
-            netmask: "{{ lookup('ini', 'vm_public_netmask section=director file=settings.ini') }}"
+            ip: "172.30.254.253"
+            netmask: "255.255.255.0"
+          - name: "{{ lookup('ini', 'vm_private_pg section=director file=settings.ini') }}"
+            ip: "172.30.254.254"
+            netmask: "255.255.255.0"
         customization:
           hostname: "{{ lookup('ini', 'vm_hostname section=director file=settings.ini') }}"
           password: "{{ lookup('ini', 'vm_password section=director file=settings.ini') }}"
+          dns_servers: "{{ lookup('ini', 'vm_public_nameserver section=director file=settings.ini') }}"
         state: present
 
     - name: power on the vm
@@ -38,7 +42,10 @@
         name: "{{ lookup('ini', 'vm_name section=director file=settings.ini') }}"
         state: poweredon
         wait_for_ip_address: yes
-      delegate_to: localhost
+
+    - name: wait for VM ready
+      pause:
+        seconds: 120
 
     - name: remove the vm
       vmware_guest:
@@ -54,7 +61,6 @@
 - name: prepare undercloud
   hosts: director
   tags: ['undercloud']
-  gather_facts: no
 
   tasks:
     - name: preare stack user
@@ -134,17 +140,28 @@
             name: python-tripleoclient
             state: present
 
-        - name: configure director
+        - name: get an available NIC for PXE usage
           shell: |
-            cp /usr/share/instack-undercloud/undercloud.conf.sample ~/undercloud.conf
-            sed -i "s/^local_ip.*/local_ip = {{ lookup(ini, 'local_ip section=undercloud file=settings.ini') }}/; \
-                    s/^network_gateway.*/network_gateway = {{ lookup(ini, 'network_gateway section=undercloud file=settings.ini') }}/; \
-                    s/^local_interface.*/local_interface = {{ lookup(ini, 'local_interface section=undercloud file=settings.ini') }}/; \
-                    s/^network_cidr.*/network_cidr = {{ lookup(ini, 'network_cidr section=undercloud file=settings.ini') }}/; \
-                    s/^masquerade_network.*/masquerade_network = {{ lookup(ini, 'masquerade_network section=undercloud file=settings.ini') }}/; \
-                    s/^dhcp_start.*/dhcp_start = {{ lookup(ini, 'dhcp_start section=undercloud file=settings.ini') }}/; \
-                    s/^dhcp_end.*/dhcp_end = {{ lookup(ini, 'dhcp_end section=undercloud file=settings.ini') }}/; \
-                    s/^inspection_iprange.*/inspection_iprange = {{ lookup(ini, 'inspection_iprange section=undercloud file=settings.ini') }}/;" \
+            for nic in $(ip link list | grep UP | grep -o 'ens[0-9]\+') ; do
+              ip addr show $nic | grep {{ lookup('ini', 'vm_public_ip section=director file=settings.ini') }} &>/dev/null
+              if [[ $? -ne 0 ]] ; then
+                echo $nic
+                break
+              fi
+            done
+          register: nic
+
+        - name: configure director deployment conf
+          shell: |
+            cp -f /usr/share/instack-undercloud/undercloud.conf.sample ~/undercloud.conf
+            sed -i "s%^#local_ip.*%local_ip = {{ lookup('ini', 'local_ip section=undercloud file=settings.ini') }}%; \
+                    s%^#network_gateway.*%network_gateway = {{ lookup('ini', 'network_gateway section=undercloud file=settings.ini') }}%; \
+                    s%^#local_interface.*%local_interface = {{ nic.stdout }}%; \
+                    s%^#network_cidr.*%network_cidr = {{ lookup('ini', 'network_cidr section=undercloud file=settings.ini') }}%; \
+                    s%^#masquerade_network.*%masquerade_network = {{ lookup('ini', 'masquerade_network section=undercloud file=settings.ini') }}%; \
+                    s%^#dhcp_start.*%dhcp_start = {{ lookup('ini', 'dhcp_start section=undercloud file=settings.ini') }}%; \
+                    s%^#dhcp_end.*%dhcp_end = {{ lookup('ini', 'dhcp_end section=undercloud file=settings.ini') }}%; \
+                    s%^#inspection_iprange.*%inspection_iprange = {{ lookup('ini', 'inspection_iprange section=undercloud file=settings.ini') }}%;" \
             undercloud.conf
             openstack undercloud install
           become: yes
