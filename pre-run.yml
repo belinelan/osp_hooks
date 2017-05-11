@@ -98,12 +98,27 @@
             dest: /etc/hosts
 
         - name: register system
-          tags: ['run']
           shell: |
             subscription-manager register \
               --username {{ lookup('ini', 'subscription_user section=undercloud file=settings.ini') }}\
               --password {{ lookup('ini', 'subscription_pass section=undercloud file=settings.ini') }}
             subscription-manager refresh
+
+        - name: attach pools
+          tags: ['run']
+          shell: |
+            IFS="\n"
+            for pool in $(echo {{ lookup('ini', 'osp_pools section=undercloud file=settings.ini') }} | tr "," "\n" | sed -e 's/^ \+//'); do
+            # subscription-manager attach --pool=$(
+            #      subscription-manager list --available --all | grep '^\(Subscription Name:\|Pool ID:\)' |\
+            #        sed -ne "/${pool}/{n;s/[ \t]\+//g;p}" |\
+            #        cut -d':' -f2
+            #  )
+              echo $pool
+            done
+
+        - name: register system
+          shell: |
             IFS="\n"
             for pool in $(echo {{ lookup('ini', 'osp_pools section=undercloud file=settings.ini') }} | tr "," "\n" | sed -e 's/^ \+//'); do
               subscription-manager attach --pool=$(
@@ -117,7 +132,7 @@
               subscription-manager repos --enable=${repo}
             done
             yum update -y
-            #shutdown -r now
+            shutdown -r now
 
         #- name: Wait for OS come back online
         #  wait_for_connection:
