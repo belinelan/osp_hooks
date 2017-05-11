@@ -1,9 +1,8 @@
 ---
 - name: handware introspectiona and configure overcloud
-  hosts: localhost
+  hosts: director
   vars_files: 
     - var/main.yml
-#verify vars_files
 
   tasks:
     - name: install overcloud images
@@ -60,8 +59,9 @@
           #further figure out, and also how to work for two nodes,http://docs.ansible.com/ansible/os_ironic_module.html
 
      
-    - name: hardware introspection
-      shell: 
+    - name: assign kernel and ramdisk images to all nodes, and start hardware introspection
+      shell: |
+        openstack baremetal configure boot
         for node in $(openstack baremetal node list -c UUID -f value) ; do openstack baremetal node manage $node ; done
       os_ironic_inspect:
         name: "testnode1"
@@ -74,7 +74,7 @@
     - name: customerize network-environment.yaml
       block:
       template: 
-        src: /templates/network-environment.j2
+        src: templates/network-environment.yaml.j2
         dest: /home/stack/templates/network-environment.yaml
         owner: stack
         group: stack
@@ -82,7 +82,7 @@
 
     - name: customerize nic-configs
       template:
-        src: /templates/nic-configs/{{ item }}.j2
+        src: templates/nic-configs/{{ item }}.j2
         dest: /home/stack/tempaltes/nic-configs/{{ item }}.yaml
       with_items:
         - controller
