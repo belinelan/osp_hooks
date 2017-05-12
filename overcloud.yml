@@ -36,17 +36,28 @@
         source /home/stack/stackrc
         neutron subnet-update {{ neutron_subnet_uuid.stdout }} \
         --dns-nameserver 8.8.8.8
-      # why need . stdout
+    
+    - name: install shade for using openstack modules
+      shell: |
+        curl "https://bootstrap.pypa.io/get-pip.py" -o "get-pip.py"
+        python get-pip.py
+        pip install shade
 
     - name: add ironic node to undercloud
       os_ironic:
-        cloud: "undercloud"
+        auth_type: password
+        auth:
+          auth_url: http://192.168.3.1:5000/v2.0
+          username: admin
+          password: dangerous
+          project_name: admin
         driver: "pxe_ipmitool"
-        properties:
-          cpus: 24
-          cpu_arch: "x86_64"
-          ram: 257000
-          disk_size: 898
+        #properties:
+        #  cpus: 24
+        #  cpu_arch: "x86_64"
+        #  ram: 257000
+        #  disk_size: 898
+        name: lxh11ser6
         nics:
           - mac: "a0:36:9f:62:71:b5"
         driver_info:
@@ -55,6 +66,7 @@
             ipmi_username: "lenovo"
             ipmi_password: "len0vO"
           #further figure out, and also how to work for two nodes,http://docs.ansible.com/ansible/os_ironic_module.html
+          #http://blog.oddbit.com/2015/10/26/ansible-20-new-openstack-modules/
       tags:
         - ironic
      
