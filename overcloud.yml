@@ -64,19 +64,6 @@
       tags:
         - introspect
 
-#    - name: start hardware introspect
-#      os_ironic_inspect:
-#        auth_type: password
-#        auth:
-#          auth_url: http://192.168.3.1:5000/v2.0
-#          username: admin
-#          password: dangerous
-#          project_name: admin 
-#        name: "lxh11ser6"
-#        #http://docs.ansible.com/ansible/os_ironic_inspect_module.html
-#      tags:
-#        - introspect
-
     - name: tagging node into profiles
       shell: 
         openstack baremetal node set --property capabilities='profile:compute,boot_option:local' 58c3d07e-24f2-48a7-bbb6-6843f0e8ee13
