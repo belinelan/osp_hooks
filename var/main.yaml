@@ -1,3 +1,21 @@
+#instackenv.json.j2
+host1_pxe_mac: a0:36:9f:62:71:b5
+host1_disk_size_GB: 898
+host1_arch: x86_64
+host1_pm_type: pxe_ipmitool
+host1_pm_user: lenovo
+host1_pm_password: len0vO
+host1_pm_addr: 10.228.225.166
+
+host2_pxe_mac: a0:36:9f:5a:27:e9
+host2_disk_size_GB: 898
+host2_arch: x86_64
+host2_pm_type: pxe_ipmitool
+host2_pm_user: lenovo
+host2_pm_password: len0vO
+host2_pm_addr: 10.228.225.178
+
+#network-environment.yaml.j2
 external_net_cidr: 10.1.2.0/24
 external_pools_start: 10.1.2.2
 external_pools_end: 10.1.2.50
