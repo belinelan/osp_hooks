@@ -55,7 +55,7 @@
       tags:
         - ironic
      
-    - name: assign kernel and ramdisk images to all nodes and set nodes to managable state
+    - name: assign kernel and ramdisk images to all nodes and start introspect
       shell: |
         source /home/stack/stackrc
         openstack baremetal configure boot
