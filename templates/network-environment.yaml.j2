@@ -28,7 +28,7 @@ parameter_defaults:
   #             # Define the DNS servers (maximum 2) for the overcloud nodes
   DnsServers: ["8.8.8.8","8.8.4.4"]
   NeutronExternalNetworkBridge: "''"
-  ControllerHostnameFormat:  snowctl0%index%
-  ComputeHostnameFormat: snowcom0%index% 
+  ControllerHostnameFormat:  {{ controller_hostname }}
+  ComputeHostnameFormat: {{ compute_hostname }}
 
 

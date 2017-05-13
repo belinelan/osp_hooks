@@ -23,5 +23,6 @@ external_vlan_id: 101
 external_interface_route: 10.1.2.1
 control_plan_route: 192.168.3.1
 
+# keep %index% without changing
 controller_hostname: snowctl0%index%
 compute_hostname: snowcom0%index%
