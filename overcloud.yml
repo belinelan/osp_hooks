@@ -65,8 +65,12 @@
         - introspect
 
     - name: tagging node into profiles
-      shell: 
-        openstack baremetal node set --property capabilities='profile:compute,boot_option:local' 58c3d07e-24f2-48a7-bbb6-6843f0e8ee13
+      shell: | 
+        source /home/stack/stackrc
+        openstack baremetal node set --property capabilities='profile:control,boot_option:local' {{ host1_name }}
+        openstack baremetal node set --property capabilities='profile:compute,boot_option:local' {{ host2_name }}
+      tags:
+        - tag
 
     - name: customerize network-environment.yaml
       template: 
@@ -75,14 +79,21 @@
         owner: stack
         group: stack
         mode: '644'
+      tags:
+        - temp1
 
     - name: customerize nic-configs
       template:
-        src: templates/nic-configs/{{ item }}.j2
-        dest: /home/stack/tempaltes/nic-configs/{{ item }}.yaml
+        src: templates/nic-configs/{{ item }}.yaml.j2
+        dest: /home/stack/templates/nic-configs/{{ item }}.yaml
+        owner: stack
+        group: stack
+        mode: '644'
       with_items:
         - controller
         - compute
+      tags:
+        - temp2
 
     - name: deploy overcloud
       shell:

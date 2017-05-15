@@ -1,15 +1,19 @@
 #instackenv.json.j2
+#controller host
 host1_pxe_mac: a0:36:9f:62:71:b5
 host1_disk_size_GB: 898
 host1_arch: x86_64
+host1_name: lxh11ser6
 host1_pm_type: pxe_ipmitool
 host1_pm_user: lenovo
 host1_pm_password: len0vO
 host1_pm_addr: 10.228.225.166
 
+#compute host
 host2_pxe_mac: a0:36:9f:5a:27:e9
 host2_disk_size_GB: 898
 host2_arch: x86_64
+host2_name: lxh11ser18
 host2_pm_type: pxe_ipmitool
 host2_pm_user: lenovo
 host2_pm_password: len0vO
@@ -19,10 +23,21 @@ host2_pm_addr: 10.228.225.178
 external_net_cidr: 10.1.2.0/24
 external_pools_start: 10.1.2.2
 external_pools_end: 10.1.2.50
-external_vlan_id: 101
+external_vlan_id: 151
 external_interface_route: 10.1.2.1
 control_plan_route: 192.168.3.1
 
-# keep %index% without changing
-controller_hostname: snowctl0%index%
-compute_hostname: snowcom0%index%
+# keep 0%index% without changing
+controller_hostname: lxh11ser6ctl0%index%
+compute_hostname: lxh11ser18com0%index%
+
+# controller.yaml.j2 and compute.yaml.j2
+externalvlan: 151
+internalapivlan: 160
+storagevlan: 161
+storagemgmtvlan: 162
+tenantvlan: 163
+managementvlan: 164
+externalroute: 10.1.2.1
+pxenic: ens9f1
+intnic: ens9f2
