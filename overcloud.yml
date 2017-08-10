@@ -11,6 +11,8 @@
       with_items: 
         - rhosp-director-images
         - rhosp-director-images-ipa
+      tags:
+        - image
 
     - name: untar and upload images
       vars: 
@@ -31,14 +33,20 @@
         source /home/stack/stackrc
         neutron subnet-list -c id -f value
       register: neutron_subnet_uuid
+      tags:
+        - uuid
 
     - debug: msg="neutron_subnet_uuid is {{ neutron_subnet_uuid.stdout }}"
+      tags:
+        - print
 
     - name: setup nameserver for undercloud neutron subnet
       shell: |
         source /home/stack/stackrc
         neutron subnet-update {{ neutron_subnet_uuid.stdout }} \
         --dns-nameserver 8.8.8.8
+      tags:
+        - dns
     
     - name: Get instackenv.json
       template:
@@ -51,7 +59,7 @@
         - instack
 
     - name: Import instackenv.json
-      shell: . /home/stack/stackrc; openstack baremetal import --json /home/stack/instackenv.json
+      shell: . /home/stack/stackrc; openstack overcloud node import /home/stack/instackenv.json
       tags:
         - ironic
      
@@ -82,6 +90,15 @@
       tags:
         - temp1
 
+    - name: create nic-configs directory
+      shell:
+        mkdir /home/stack/templates/nic-configs
+      become: yes
+      become_user: stack
+      become_method: su
+      tags:
+        - temp21
+
     - name: customerize nic-configs
       template:
         src: templates/nic-configs/{{ item }}.yaml.j2
@@ -95,11 +112,25 @@
       tags:
         - temp2
 
-    - name: deploy overcloud
+    - name: copy run-os-net-config.sh to template folder
       shell:
+        cp /usr/share/openstack-tripleo-heat-templates/network/scripts/run-os-net-config.sh /home/stack/templates
+      become: yes
+      become_user: stack
+      become_method: su
+      tags:
+        - temp3
+
+    - name: deploy overcloud
+      shell: |
+        source /home/stack/stackrc
         openstack overcloud deploy --templates \
         -e /usr/share/openstack-tripleo-heat-templates/environments/network-isolation.yaml \
         -e /home/stack/templates/network-environment.yaml \
         --control-flavor control --compute-flavor compute \
-        --ntp-server 10.254.67.22 --neutron-network-type vxlan --neutron-tunnel-types vxlan
-
+        --ntp-server 10.254.67.22 >> /home/stack/overcloud_status.txt
+      become: yes
+      become_user: stack
+      become_method: su
+      tags:
+        - deploy
