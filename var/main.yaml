@@ -1,43 +1,54 @@
-#instackenv.json.j2
-#controller host
-host1_pxe_mac: a0:36:9f:62:71:b5
-host1_disk_size_GB: 898
-host1_arch: x86_64
-host1_name: lxh11ser6
-host1_pm_type: pxe_ipmitool
-host1_pm_user: lenovo
-host1_pm_password: len0vO
-host1_pm_addr: 10.228.225.166
+#undercloud.conf.j2
+local_ip: 192.168.3.1/24
+network_gateway: 192.168.3.1
+local_interface: ens224
+network_cidr: 192.168.3.0/24
+masquerade_network: 192.168.3.0/24
+dhcp_start: 192.168.3.5
+dhcp_end: 192.168.3.30
+inspection_iprange_start: 192.168.3.100
+inspection_iprange_end: 192.168.3.120
 
-#compute host
-host2_pxe_mac: a0:36:9f:5a:27:e9
-host2_disk_size_GB: 898
+#instackenv.json.j2/controller host
+host1_pxe_mac: 88:1d:fc:99:41:78
+host1_disk_size_GB: 285
+host1_arch: x86_64
+host1_name: cdh2h3
+host1_pm_type: pxe_ipmitool
+host1_pm_user: admin
+host1_pm_password: password
+host1_pm_addr: 10.10.10.10
+
+#instackenv.json.j2/compute host
+host2_pxe_mac: 88:1d:fc:3a:5e:ce
+host2_disk_size_GB: 285
 host2_arch: x86_64
-host2_name: lxh11ser18
+host2_name: cdh2h9
 host2_pm_type: pxe_ipmitool
-host2_pm_user: lenovo
-host2_pm_password: len0vO
-host2_pm_addr: 10.228.225.178
+host2_pm_user: admin
+host2_pm_password: password
+host2_pm_addr: 10.10.10.10
 
 #network-environment.yaml.j2
-external_net_cidr: 10.1.2.0/24
-external_pools_start: 10.1.2.2
-external_pools_end: 10.1.2.50
-external_vlan_id: 151
-external_interface_route: 10.1.2.1
+external_net_cidr: 10.1.1.0/24
+external_pools_start: 10.1.1.2
+external_pools_end: 10.1.1.50
+external_vlan_id: 2
+external_interface_route: 10.1.1.1
 control_plan_route: 192.168.3.1
 
 # keep 0%index% without changing
-controller_hostname: lxh11ser6ctl0%index%
-compute_hostname: lxh11ser18com0%index%
+controller_hostname: cdh2h30%index%
+compute_hostname: cdh2h90%index%
 
 # controller.yaml.j2 and compute.yaml.j2
-externalvlan: 151
-internalapivlan: 160
-storagevlan: 161
-storagemgmtvlan: 162
-tenantvlan: 163
-managementvlan: 164
-externalroute: 10.1.2.1
+externalvlan: 3
+internalapivlan: 4
+storagevlan: 5
+storagemgmtvlan: 6
+tenantvlan: 7
+managementvlan: 8
+externalroute: 10.1.1.1
 pxenic: ens9f1
 intnic: ens9f2
+intnic2: ens9f3

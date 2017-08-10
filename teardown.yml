@@ -1,0 +1,35 @@
+---
+- name: de-register director vm
+  hosts: director
+
+  tasks:
+    - name: de-regster director
+      redhat_subscription: 
+        state: absent
+
+- name: remove the director vm
+  hosts: localhost
+
+  tasks:
+    - name: power off director VM
+      vmware_guest:
+        hostname: "{{ lookup('ini', 'vcenter_address section=director file=settings.ini')}}"
+        username: "{{ lookup('ini', 'vcenter_user section=director file=settings.ini') }}"
+        password: "{{ lookup('ini', 'vcenter_pass section=director file=settings.ini') }}"
+        validate_certs: no
+        datacenter: "{{ lookup('ini', 'vcenter_datacenter section=director file=settings.ini') }}"
+        name: "{{ lookup('ini', 'vm_name section=director file=settings.ini') }}"
+        state: poweredoff
+     
+ 
+    - name: remove director VM 
+      vmware_guest:
+        hostname: "{{ lookup('ini', 'vcenter_address section=director file=settings.ini')}}"
+        username: "{{ lookup('ini', 'vcenter_user section=director file=settings.ini') }}"
+        password: "{{ lookup('ini', 'vcenter_pass section=director file=settings.ini') }}"
+        validate_certs: no
+        datacenter: "{{ lookup('ini', 'vcenter_datacenter section=director file=settings.ini') }}"
+        name: "{{ lookup('ini', 'vm_name section=director file=settings.ini') }}"
+        state: absent
+
+      

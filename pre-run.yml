@@ -20,10 +20,10 @@
             netmask: "{{ lookup('ini', 'vm_public_netmask section=director file=settings.ini') }}"
             gateway: "{{ lookup('ini', 'vm_public_gw section=director file=settings.ini') }}"
           # Although IP and Netmask are optional, error will be returned from vSphere API without them
-          - name: "{{ lookup('ini', 'vm_private_pg section=director file=settings.ini') }}"
-            ip: "{{ lookup('ini', 'vm_private_ip section=director file=settings.ini') }}"
-            netmask: "{{ lookup('ini', 'vm_private_netmask section=director file=settings.ini') }}"
-          - name: "{{ lookup('ini', 'vm_private_pg section=director file=settings.ini') }}"
+          - name: "{{ lookup('ini', 'vm_pxe_pg section=director file=settings.ini') }}"
+            ip: "192.168.3.1"
+            netmask: "255.255.255.0"
+          - name: "{{ lookup('ini', 'vm_external_pg section=director file=settings.ini') }}"
             ip: "172.30.254.254"
             netmask: "255.255.255.0"
         customization:
@@ -31,6 +31,8 @@
           password: "{{ lookup('ini', 'vm_password section=director file=settings.ini') }}"
           dns_servers: "{{ lookup('ini', 'vm_public_nameserver section=director file=settings.ini') }}"
         state: present
+      tags:
+        - create
 
     - name: power on the vm
       vmware_guest:
@@ -42,24 +44,20 @@
         name: "{{ lookup('ini', 'vm_name section=director file=settings.ini') }}"
         state: poweredon
         wait_for_ip_address: yes
+      tags:
+        - create
 
     - name: wait for VM ready
       pause:
         seconds: 120
+      tags:
+        - create
 
-    - name: remove the vm
-      vmware_guest:
-        hostname: "{{ lookup('ini', 'vcenter_address section=director file=settings.ini')}}"
-        username: "{{ lookup('ini', 'vcenter_user section=director file=settings.ini') }}"
-        password: "{{ lookup('ini', 'vcenter_pass section=director file=settings.ini') }}"
-        validate_certs: no
-        datacenter: "{{ lookup('ini', 'vcenter_datacenter section=director file=settings.ini') }}"
-        name: "{{ lookup('ini', 'vm_name section=director file=settings.ini') }}"
-        state: absent
-      tags: ['teardown']
 
 - name: prepare undercloud
   hosts: director
+  vars_files: 
+    - var/main.yaml
   tags: ['undercloud']
 
   tasks:
@@ -105,6 +103,12 @@
             src: templates/hosts
             dest: /etc/hosts
 
+        - name: insert dns stanza in /etc/resolv.conf for systemcm register
+          blockinfile:
+            path: /etc/resolv.conf
+            block: |
+              nameserver {{ lookup('ini', 'vm_public_nameserver section=director file=settings.ini') }}
+
         - name: register system
           shell: |
             subscription-manager register \
@@ -135,39 +139,50 @@
               sudo subscription-manager repos --enable=$repo
             done
 
+        - name: yum update system check log in /root/yum_status.txt
+          shell: |
+            yum update -y >> /root/yum_status.txt
+        
+        - name: reboot host after 1 mins delay
+          shell : shutdown -r 1
+          async: 0
+          poll: 0
+          ignore_errors: true
+          tags:
+            - reboot
+
+        - name: wait for server to restart
+          local_action:
+            module: wait_for
+            host: "{{ lookup('ini', 'vm_public_ip section=director file=settings.ini') }}"
+            port: 22
+            delay: 110
+            timeout: 300
+          tags:
+            - wait
+
         - name: install director pacakges
           yum:
             name: python-tripleoclient
             state: present
+          tags:
+            - tripleo
 
-        - name: get the NIC for PXE usage
-          shell: |
-            for nic in $(ip link list | grep UP | grep -o 'ens[0-9]\+') ; do
-              ip addr show $nic | grep {{ lookup('ini', 'vm_private_ip section=director file=settings.ini') }} &>/dev/null
-              if [[ $? -eq 0 ]] ; then
-                echo $nic
-                break
-              fi
-            done
-          register: nic
-
-        - name: configure director deployment conf
-          vars:
-            local_ip: "{{ lookup('ini', 'vm_private_ip section=director file=settings.ini') }}"
-            network_cidr: "{{ lookup('ini', 'network_cidr section=undercloud file=settings.ini') }}"
-          shell: |
-            bitmask=$(echo "{{ network_cidr }}" | cut -d/ -f2)
-            cp -f /usr/share/instack-undercloud/undercloud.conf.sample ~/undercloud.conf
-            sed -i "s%^#local_ip.*%local_ip = {{ local_ip }}/${bitmask}%; \
-                    s%^#network_gateway.*%network_gateway = {{ lookup('ini', 'network_gateway section=undercloud file=settings.ini') }}%; \
-                    s%^#local_interface.*%local_interface = {{ nic.stdout }}%; \
-                    s%^#network_cidr.*%network_cidr = {{ lookup('ini', 'network_cidr section=undercloud file=settings.ini') }}%; \
-                    s%^#masquerade_network.*%masquerade_network = {{ lookup('ini', 'masquerade_network section=undercloud file=settings.ini') }}%; \
-                    s%^#dhcp_start.*%dhcp_start = {{ lookup('ini', 'dhcp_start section=undercloud file=settings.ini') }}%; \
-                    s%^#dhcp_end.*%dhcp_end = {{ lookup('ini', 'dhcp_end section=undercloud file=settings.ini') }}%; \
-                    s%^#inspection_iprange.*%inspection_iprange = {{ lookup('ini', 'inspection_iprange section=undercloud file=settings.ini') }}%;" \
-            undercloud.conf
-            openstack undercloud install
+        - name: create undercloud.conf
+          template:
+            src: templates/undercloud.conf.j2
+            dest: /home/stack/undercloud.conf
+            owner: stack
+            group: stack
+            mode: '644'
+          tags:
+            - undercloudconf
+      
+        - name: install undercloud
+          shell:
+            script -c "openstack undercloud install" /home/stack/undercloud_install.txt
           become: yes
           become_user: stack
           become_method: su
+          tags:
+            - undercloudinstall
