@@ -17,7 +17,7 @@ host1_name: cdh2h3
 host1_pm_type: pxe_ipmitool
 host1_pm_user: admin
 host1_pm_password: password
-host1_pm_addr: 10.10.10.10
+host1_pm_addr: 10.228.225.33
 
 #instackenv.json.j2/compute host
 host2_pxe_mac: 88:1d:fc:3a:5e:ce
@@ -27,7 +27,7 @@ host2_name: cdh2h9
 host2_pm_type: pxe_ipmitool
 host2_pm_user: admin
 host2_pm_password: password
-host2_pm_addr: 10.10.10.10
+host2_pm_addr: 10.228.225.39
 
 #network-environment.yaml.j2
 external_net_cidr: 10.1.1.0/24
@@ -37,9 +37,9 @@ external_vlan_id: 2
 external_interface_route: 10.1.1.1
 control_plan_route: 192.168.3.1
 
-# keep 0%index% without changing
-controller_hostname: cdh2h30%index%
-compute_hostname: cdh2h90%index%
+# keep %index% without changing
+controller_hostname: cdh2h3%index%
+compute_hostname: cdh2h9%index%
 
 # controller.yaml.j2 and compute.yaml.j2
 externalvlan: 3
@@ -49,6 +49,6 @@ storagemgmtvlan: 6
 tenantvlan: 7
 managementvlan: 8
 externalroute: 10.1.1.1
-pxenic: ens9f1
-intnic: ens9f2
-intnic2: ens9f3
+pxenic: enp2s0f0
+intnic: enp2s0f1
+intnic2: enp2s0f2
