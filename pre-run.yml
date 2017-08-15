@@ -180,7 +180,7 @@
       
         - name: install undercloud
           shell:
-            script -c "openstack undercloud install" /home/stack/undercloud_install.txt
+            openstack undercloud install
           become: yes
           become_user: stack
           become_method: su

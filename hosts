@@ -1,0 +1,9 @@
+[director]
+10.228.225.133 ansible_connection=ssh ansible_user=root ansible_ssh_pass="#1Danger0us"
+
+[overcloud]
+cdh2h3 ansible_host=192.168.3.8 ansible_user=heat-admin
+cdh2h9 ansible_host=192.168.3.16 ansible_user=heat-admin
+
+[overcloud:vars]
+ansible_ssh_common_args='-o ProxyCommand="ssh stack@10.228.225.133 -W %h:%p"'

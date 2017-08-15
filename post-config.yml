@@ -1,0 +1,27 @@
+---
+- hosts: director
+  vars_files:
+    - var/main.yaml
+
+  tasks:
+    - name: copy ansible host key to director
+      copy:
+        src: /root/.ssh/id_rsa.pub 
+        dest: /home/stack/
+        owner: stack
+        group: stack
+        mode: 666
+
+    - name: setup passwordless login from ansible host to overcloud
+      shell: |
+        touch /home/stack/.ssh/authorized_keys
+        sudo cat /home/stack/id_rsa.pub >> /home/stack/.ssh/authorized_keys
+        . /home/stack/stackrc
+        for i in `nova list |awk 'FNR == 4, FNR == 5 { print $12 }' | sed 's/^.*ctlplane=//'`;
+          do
+          sudo cat /home/stack/id_rsa.pub | ssh heat-admin@$i 'cat >> .ssh/authorized_keys' 
+          done
+      become: yes
+      become_user: stack
+      tags:
+        - test

@@ -72,13 +72,27 @@
       tags:
         - introspect
 
-    - name: tagging node into profiles
+    - name: tagging node into profiles and defind local_gb, root_device
       shell: | 
         source /home/stack/stackrc
         openstack baremetal node set --property capabilities='profile:control,boot_option:local' {{ host1_name }}
         openstack baremetal node set --property capabilities='profile:compute,boot_option:local' {{ host2_name }}
+        openstack baremetal node set --property root_device='{"serial":"600605b0098d2330212400a8177b2d41"}' {{ host1_name }}
+        openstack baremetal node set --property root_device='{"serial":"600605b0098e98001c82dd295cd95e90"}' {{ host2_name }}
+        openstack baremetal node set --property local_gb='{"283"}' {{ host1_name }}
+        openstack baremetal node set --property local_gb='{"283"}' {{ host2_name }}
       tags:
         - tag
+
+    - name: create directory nic-configs
+      shell:
+        mkdir /home/stack/templates/nic-configs
+        mkdir /home/stack/templates/nic-configs/bond-with-vlans
+      become: yes
+      become_user: stack
+      become_method: su
+      tags:
+        - mkdir
 
     - name: customerize network-environment.yaml
       template: 
@@ -90,19 +104,10 @@
       tags:
         - temp1
 
-    - name: create nic-configs directory
-      shell:
-        mkdir /home/stack/templates/nic-configs
-      become: yes
-      become_user: stack
-      become_method: su
-      tags:
-        - temp21
-
     - name: customerize nic-configs
       template:
-        src: templates/nic-configs/{{ item }}.yaml.j2
-        dest: /home/stack/templates/nic-configs/{{ item }}.yaml
+        src: templates/nic-configs/bond-with-vlans/{{ item }}.yaml.j2
+        dest: /home/stack/templates/nic-configs/bond-with-vlans/{{ item }}.yaml
         owner: stack
         group: stack
         mode: '644'
