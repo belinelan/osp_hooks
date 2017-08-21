@@ -5,9 +5,9 @@ resource_registry:
   #OS::TripleO::BlockStorage::Net::SoftwareConfig:
   #  ../network/config/single-nic-vlans/cinder-storage.yaml
   OS::TripleO::Compute::Net::SoftwareConfig:
-    ../templates/nic-configs/compute.yaml
+    ../templates/nic-configs/bond-with-vlans/compute.yaml
   OS::TripleO::Controller::Net::SoftwareConfig:
-    ../templates/nic-configs/controller.yaml
+    ../templates/nic-configs/bond-with-vlans/controller.yaml
   #OS::TripleO::ObjectStorage::Net::SoftwareConfig:
   #  ../network/config/single-nic-vlans/swift-storage.yaml
   #OS::TripleO::CephStorage::Net::SoftwareConfig:

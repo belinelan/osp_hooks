@@ -52,3 +52,7 @@ externalroute: 10.1.1.1
 pxenic: enp2s0f0
 intnic: enp2s0f1
 intnic2: enp2s0f2
+
+# controller post configure
+publicnetstart: 10.1.1.51
+publicnetend: 10.1.1.250

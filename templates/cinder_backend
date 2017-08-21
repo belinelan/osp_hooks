@@ -1,0 +1,113 @@
+#enabled_backends = tripleo_iscsi, vmax560_fc, unity_fc, vmax560_iscsi, unity_iscsi, vnx_fc, vnx_fc2, copriscsi, xio_fc
+enabled_backends = tripleo_iscsi, unity_fc
+
+#[vmax560_fc]
+#volume_driver = cinder.volume.drivers.dell_emc.vmax.fc.VMAXFCDriver
+#cinder_emc_config_file = /etc/cinder/cinder_emc_config_vmax560_fc.xml
+#volume_backend_name = vmax560_fc
+#driver_use_ssl = true
+#driver_ssl_cert_verify = false
+#driver_ssl_cert_path = /home/heat-admin/ca_cert.pem
+#use_multipath_for_image_xfer = True
+
+#[vmax560_iscsi]
+#volume_driver = cinder.volume.drivers.dell_emc.vmax.iscsi.VMAXISCSIDriver
+#cinder_emc_config_file = /etc/cinder/cinder_emc_config_vmax560_iscsi.xml
+#volume_backend_name = vmax560_iscsi
+#driver_use_ssl = true
+#driver_ssl_cert_verify = false
+#driver_ssl_cert_path = /home/heat-admin/ca_cert.pem
+#use_multipath_for_image_xfer = True
+#
+[unity_fc]
+storage_protocol = FC
+san_ip = 10.228.227.203 
+san_login = admin
+san_password = Password123!
+volume_driver = cinder.volume.drivers.dell_emc.unity.Driver
+volume_backend_name = unity_fc
+unity_io_ports = spa_iom_1_fc3, spb_iom_1_fc3
+unity_storage_pool_names = Unity-Qual-Openstack
+use_multipath_for_image_xfer = True
+#
+#[unity_iscsi]
+#storage_protocol = iSCSI
+#san_ip = 10.228.227.203
+#san_login = admin
+#san_password = Password123!
+#volume_driver = cinder.volume.drivers.dell_emc.unity.Driver
+#volume_backend_name = unity_iscsi
+#unity_io_ports = *_eth3
+#unity_storage_pool_names = Unity-Qual-Openstack
+#use_multipath_for_image_xfer = True
+#
+#[vnx_fc]
+#volume_backend_name = vnx_fc
+#san_ip = 10.228.227.225
+#san_login = sysadmin
+#san_password = sysadmin
+#storage_vnx_authentication_type = global
+#naviseccli_path = /opt/Navisphere/bin/naviseccli
+#volume_driver = cinder.volume.drivers.dell_emc.vnx.driver.VNXDriver
+#initiator_auto_registration = True
+#storage_protocol = fc
+#storage_vnx_pool_names = OpenstackCI
+#san_thin_provision = true
+#
+#[vnx_fc2]
+#volume_backend_name = vnx_fc2
+#san_ip = 10.228.227.225
+#san_login = sysadmin
+#san_password = sysadmin
+#storage_vnx_authentication_type = global
+#naviseccli_path = /opt/Navisphere/bin/naviseccli
+#volume_driver = cinder.volume.drivers.dell_emc.vnx.driver.VNXDriver
+#initiator_auto_registration = True
+#storage_protocol = fc
+#storage_vnx_pool_names = OpenstackCI2
+#san_thin_provision = true
+#
+#[coprfc]
+#volume_driver = cinder.volume.drivers.coprhd.fc.EMCCoprHDFCDriver
+#volume_backend_name = coprfc
+#coprhd_hostname = 10.228.225.135
+#coprhd_port = 4443
+#coprhd_username = root
+#coprhd_password = #1Danger0us
+#coprhd_tenant = 'Provider Tenant'
+#coprhd_project = openstack
+#coprhd_varray = xio123
+#
+#[copriscsi]
+#volume_driver = cinder.volume.drivers.coprhd.iscsi.EMCCoprHDISCSIDriver
+#volume_backend_name = copriscsi
+#coprhd_hostname = 10.228.225.135
+#coprhd_port = 4443
+#coprhd_username = root
+#coprhd_password = #1Danger0us
+#coprhd_tenant = 'Provider Tenant'
+#coprhd_project = openstack
+#coprhd_varray = vnx225
+#
+#[xio_fc]
+#volume_backend_name = xio_fc
+#volume_driver = cinder.volume.drivers.emc.xtremio.XtremIOFibreChannelDriver
+#san_ip = 10.228.225.123
+#xtremio_cluster_name = 96Y-XIO 
+#san_login = admin
+#san_password = Xtrem10
+#max_over_subscription_ratio = 40.0
+#use_multipath_for_image_xfer = True
+#enforce_multipath_for_image_xfer = True
+#num_volume_device_scan_tries = 10
+#
+#[xio_scsi]
+#volume_backend_name = xio_iscsi
+#volume_driver = cinder.volume.drivers.emc.xtremio.XtremIOISCSIDriver
+#san_ip = 10.228.225.123
+#xtremio_cluster_name = 96Y-XIO
+#san_login = admin
+#san_password = Xtrem10
+#max_over_subscription_ratio = 20
+#use_multipath_for_image_xfer = true
+

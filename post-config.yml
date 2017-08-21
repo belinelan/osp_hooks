@@ -1,5 +1,33 @@
 ---
 - hosts: director
+  tags: ['overcloudip']
+  tasks:
+    - name: register overcloud ip as host var
+      shell: |
+        . /home/stack/stackrc
+        nova list |awk 'FNR == 4, FNR == 5 { print $12 }' | sed 's/^.*ctlplane=//'
+      register: overcloudip
+    
+    - name: set overcloudip as host fact
+      set_fact: overcloudip
+    - debug:
+        var: overcloudip
+
+- hosts: localhost
+  vars_files:
+    - var/main.yaml
+ 
+  tasks:
+    - debug:
+        var: hostvars["director"]["overcloudip"]["stdout_lines"]
+    - name: update inventory for overcloud nodes
+      blockinfile:
+        path: hosts
+        insertafter: "[overcloud]"
+        content: |
+          {{ host1_name }} ansible_host={{ hostvars["director"]["overcloudip"]["stdout_lines"][0] }} ansible_user=heat-admin
+
+- hosts: director
   vars_files:
     - var/main.yaml
 
@@ -25,3 +53,43 @@
       become_user: stack
       tags:
         - test
+
+- hosts: overcloud
+  vars_files:
+    - var/main.yaml
+
+  tasks:
+  - name: controller tenant network
+    shell: | 
+      . /home/heat-admin/overcloudrc
+      openstack network create default
+      openstack subnet create default --network default --gateway 172.20.1.1 --subnet-range 172.20.0.0/16
+      #openstack network create public --external --provider-network-type vlan --provider-physical-network datacentre --provider-segment {{ externalvlan }}
+      #openstack subnet create public --network public --dhcp --allocation-pool start={{ publicnetstart }},end={{ publicnetend }} --gateway {{ external_interface_route }} --subnet-range {{ external_net_cidr }}
+    tags:
+      - test
+
+  - name: coment out cinder.conf default enabled_backends
+    lineinfile:
+      path: /etc/cinder/cinder.conf
+      regexp: 'enabled_backends'
+      line: '#enabled_backends'
+    become: yes
+    become_user: root
+    tags: cinder
+
+  - name: copy required cinder backends to controller
+    copy:
+      src: templates/cinder_backend
+      dest: /home/heat-admin/cinder_backend
+    tags: backend
+
+  - name: enable required cinder backends
+    shell: |
+      cat /home/heat-admin/cinder_backend >> /etc/cinder/cinder.conf
+      for i in `systemctl |grep cinder|awk '{ print $2 }'`;
+       do systemctl restart $i
+      done
+    become: yes
+    become_user: root
+    tags: restart
