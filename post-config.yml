@@ -25,13 +25,32 @@
         path: hosts
         insertafter: "[overcloud]"
         content: |
-          {{ host1_name }} ansible_host={{ hostvars["director"]["overcloudip"]["stdout_lines"][0] }} ansible_user=heat-admin
+          controller ansible_host={{ hostvars["director"]["overcloudip"]["stdout_lines"][0] }} ansible_user=heat-admin
+          compute ansible_host={{ hostvars["director"]["overcloudip"]["stdout_lines"][1] }} ansible_user=heat-admin
+
+    - name: disable known_hosts check on ansible host
+      blockinfile: 
+        path: /etc/ssh/ssh_config
+        block: |
+         Host 192.168.3.*
+           StrictHostKeyChecking no
+           UserKnownHostsFile=/dev/null
+      tags: disable
 
 - hosts: director
   vars_files:
     - var/main.yaml
 
   tasks:
+    - name: disable known_hosts check on director
+      blockinfile:
+        path: /etc/ssh/ssh_config
+        block: |
+          host 192.168.3.*
+            StrictHostKeyChecking no
+            UserKnownHostsFile=/dev/null
+      tags: disable2
+
     - name: copy ansible host key to director
       copy:
         src: /root/.ssh/id_rsa.pub 
@@ -45,18 +64,31 @@
         touch /home/stack/.ssh/authorized_keys
         sudo cat /home/stack/id_rsa.pub >> /home/stack/.ssh/authorized_keys
         . /home/stack/stackrc
-        for i in `nova list |awk 'FNR == 4, FNR == 5 { print $12 }' | sed 's/^.*ctlplane=//'`;
-          do
+        for i in `nova list |awk 'FNR == 4, FNR == 5 { print $12 }' | sed 's/^.*ctlplane=//'`; do
           sudo cat /home/stack/id_rsa.pub | ssh heat-admin@$i 'cat >> .ssh/authorized_keys' 
-          done
+        done
       become: yes
       become_user: stack
       tags:
         - test
 
-- hosts: overcloud
+    - name: copy overcloudrc and storops library file to controller
+      shell: | 
+        mkdir /home/stack/storops
+        cd /home/stack/storops
+        wget "{{ storops_link }}"
+        wget "{{ storops_source }}"
+        scp /home/stack/storops/* heat-admin@{{ hostvars["controller"]["ansible_host"] }}:/home/heat-admin/
+        scp /home/stack/overcloudrc heat-admin@{{ hostvars["controller"]["ansible_host"] }}:/home/heat-admin/
+      become: yes
+      become_user: stack
+      tags: copy
+      
+  
+- hosts: controller
   vars_files:
     - var/main.yaml
+  tags: ['overcloud']
 
   tasks:
   - name: controller tenant network
@@ -69,27 +101,71 @@
     tags:
       - test
 
-  - name: coment out cinder.conf default enabled_backends
+  - name: copy cirros image to controller
+    copy:
+      src: templates/cirros-0.3.5-x86_64-disk.img
+      dest: /home/heat-admin/
+
+  - name: upload cirros to glance
+    shell: |
+      . /home/heat-admin/overcloudrc
+      glance image-create --name "cirros" --file /home/heat-admin/cirros-0.3.5-x86_64-disk.img --disk-format qcow2 --container-format bare 
+
+  - name: install storops lib
+    shell: |
+      tar -zxvf /home/heat-admin/*.gz
+      yum localinstall -y /home/heat-admin/{{ source_folder }}/*rpm
+      rpm -ivh /home/heat-admin/python2-storops*
+    become: yes
+    become_user: root
+
+  - name: define cinder.conf enabled_backends
     lineinfile:
       path: /etc/cinder/cinder.conf
       regexp: 'enabled_backends'
-      line: '#enabled_backends'
+      line: 'enabled_backends = {{ enabled_backends }}'
     become: yes
     become_user: root
     tags: cinder
 
-  - name: copy required cinder backends to controller
+  - name: copy full cinder backends information to controller
     copy:
       src: templates/cinder_backend
       dest: /home/heat-admin/cinder_backend
     tags: backend
 
-  - name: enable required cinder backends
+  - name: append cinder backend information to cinder.conf
     shell: |
       cat /home/heat-admin/cinder_backend >> /etc/cinder/cinder.conf
-      for i in `systemctl |grep cinder|awk '{ print $2 }'`;
-       do systemctl restart $i
-      done
+      chown root:cinder /etc/cinder/cinder.conf
     become: yes
     become_user: root
-    tags: restart
+    notify:
+      - restart cinder
+ 
+  - name: ensure cinder is running
+    service:
+      name: "{{ item }}"
+      state: started 
+    with_items:
+      - openstack-cinder-schedler
+      - openstack-cinder-volume
+      - openstack-cinder-api
+
+  - name: create volume type and set type key    
+    shell: |
+      . /home/heat-admin/.overcloudrc
+      for i in {{ enabled_backends }}; do 
+        cinder type-create $i && cinder type-key $i set volume_backend_name=$i
+      done
+
+  handlers:
+    - name: restart cinder
+      service:
+        name: "{{ item }}"
+        state: restarted
+      with_items:
+        - openstack-cinder-schedler
+        - openstack-cinder-volume
+        - openstack-cinder-api
+    
