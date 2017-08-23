@@ -72,13 +72,8 @@
       tags:
         - test
 
-    - name: copy overcloudrc and storops library file to controller
-      shell: | 
-        mkdir /home/stack/storops
-        cd /home/stack/storops
-        wget "{{ storops_link }}"
-        wget "{{ storops_source }}"
-        scp /home/stack/storops/* heat-admin@{{ hostvars["controller"]["ansible_host"] }}:/home/heat-admin/
+    - name: copy overcloudrc to  controller
+      shell:  
         scp /home/stack/overcloudrc heat-admin@{{ hostvars["controller"]["ansible_host"] }}:/home/heat-admin/
       become: yes
       become_user: stack
@@ -103,7 +98,7 @@
 
   - name: copy cirros image to controller
     copy:
-      src: templates/cirros-0.3.5-x86_64-disk.img
+      src: files/cirros-0.3.5-x86_64-disk.img
       dest: /home/heat-admin/
 
   - name: upload cirros to glance
@@ -111,11 +106,16 @@
       . /home/heat-admin/overcloudrc
       glance image-create --name "cirros" --file /home/heat-admin/cirros-0.3.5-x86_64-disk.img --disk-format qcow2 --container-format bare 
 
+  - name: copy storops to controller
+    copy:
+      src: "{{ item }}"
+      dest: /home/heat-admin/
+    with_fileglob:
+      - files/storops/*
+
   - name: install storops lib
     shell: |
-      tar -zxvf /home/heat-admin/*.gz
-      yum localinstall -y /home/heat-admin/{{ source_folder }}/*rpm
-      rpm -ivh /home/heat-admin/python2-storops*
+      yum localinstall -y /home/heat-admin/*rpm
     become: yes
     become_user: root
 
@@ -130,7 +130,7 @@
 
   - name: copy full cinder backends information to controller
     copy:
-      src: templates/cinder_backend
+      src: files/cinder_backend
       dest: /home/heat-admin/cinder_backend
     tags: backend
 
@@ -148,16 +148,19 @@
       name: "{{ item }}"
       state: started 
     with_items:
-      - openstack-cinder-schedler
+      - openstack-cinder-scheduler
       - openstack-cinder-volume
       - openstack-cinder-api
+    become: yes
+    become_user: root
 
   - name: create volume type and set type key    
     shell: |
-      . /home/heat-admin/.overcloudrc
-      for i in {{ enabled_backends }}; do 
-        cinder type-create $i && cinder type-key $i set volume_backend_name=$i
+      . /home/heat-admin/overcloudrc
+      for i in $(echo {{ enabled_backends }} | sed "s/,/ /g"); do 
+        cinder type-create $i && cinder type-key $i set volume_backend_name=$i 
       done
+    tags: key
 
   handlers:
     - name: restart cinder
@@ -165,7 +168,9 @@
         name: "{{ item }}"
         state: restarted
       with_items:
-        - openstack-cinder-schedler
+        - openstack-cinder-scheduler
         - openstack-cinder-volume
         - openstack-cinder-api
+      become: yes
+      become_user: root
     

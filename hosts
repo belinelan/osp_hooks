@@ -4,6 +4,3 @@ director ansible_host=10.228.225.133 ansible_connection=ssh ansible_user=root an
 ansible_ssh_common_args='-o ProxyCommand="ssh stack@10.228.225.133 -W %h:%p"'
 
 [overcloud]
-# BEGIN ANSIBLE MANAGED BLOCK
-cdh2h3 ansible_host=192.168.3.8 ansible_user=heat-admin
-# END ANSIBLE MANAGED BLOCK

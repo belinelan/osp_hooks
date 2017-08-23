@@ -56,8 +56,5 @@ intnic2: enp2s0f2
 # controller post configure
 publicnetstart: 10.1.1.51
 publicnetend: 10.1.1.250
-storops_link: https://github.com/emc-openstack/storops/releases/download/r0.4.15/python2-storops-0.4.15-1.el7.noarch.rpm
-storops_source: https://github.com/emc-openstack/storops/archive/r0.4.15.tar.gz
-source_folder: storops-r0.4.15
-enabled_backends: tripleo_iscsi, unity_iscsi
-#enabled_backends: tripleo_iscsi, vmax560_fc, unity_fc, vmax560_iscsi, unity_iscsi, vnx_fc, vnx_fc2, xio_fc
+enabled_backends: tripleo_iscsi,unity_fc,vnx_fc
+#enabled_backends: tripleo_iscsi,vmax560_fc,unity_fc,vmax560_iscsi,unity_iscsi,vnx_fc,vnx_fc2,xio_fc
