@@ -17,7 +17,7 @@ host1_name: cdh2h3
 host1_pm_type: pxe_ipmitool
 host1_pm_user: admin
 host1_pm_password: password
-host1_pm_addr: 10.228.225.33
+host1_pm_addr: x.x.x.x
 
 #instackenv.json.j2/compute host
 host2_pxe_mac: 88:1d:fc:3a:5e:ce
@@ -27,7 +27,7 @@ host2_name: cdh2h9
 host2_pm_type: pxe_ipmitool
 host2_pm_user: admin
 host2_pm_password: password
-host2_pm_addr: 10.228.225.39
+host2_pm_addr: x.x.x.x
 
 #network-environment.yaml.j2
 external_net_cidr: 10.1.1.0/24
@@ -57,14 +57,14 @@ intnic2: enp2s0f2
 publicnetstart: 10.1.1.51
 publicnetend: 10.1.1.250
 ctl_public_nic: enp2s0f3
-ctl_public_ip: 10.228.225.63
-ctl_public_gw: 10.228.225.1
+ctl_public_ip: x.x.x.x
+ctl_public_gw: x.x.x.x
 ctl_public_netmask: 255.255.255.0
 enabled_backends: tripleo_iscsi,unity_fc,vnx_fc
 #enabled_backends: tripleo_iscsi,vmax_fc,unity_fc,vmax_iscsi,unity_iscsi,vnx_fc,vnx_fc2,xio_fc
 
 # vmax backend  cinder_emc_config_vmax_fc.xml & cinder_emc_config_vmax_iscsi.xml 
-ecom_ip: 10.228.225.104
+ecom_ip: x.x.x.x
 array_id: 196701560
 vmax_portgroup_fc: lan_fc_2d27_3d31
 vmax_pool: SRP_1
