@@ -1,0 +1,188 @@
+---
+- name: rollback and provision director vm
+  hosts: localhost
+  tags: ['provision']
+
+  tasks:
+    - name: provision a vm
+      vmware_guest:
+        hostname: "{{ lookup('ini', 'vcenter_address section=director file=settings.ini')}}"
+        username: "{{ lookup('ini', 'vcenter_user section=director file=settings.ini') }}"
+        password: "{{ lookup('ini', 'vcenter_pass section=director file=settings.ini') }}"
+        validate_certs: no
+        datacenter: "{{ lookup('ini', 'vcenter_datacenter section=director file=settings.ini') }}"
+        esxi_hostname: "{{ lookup('ini', 'vcenter_esxi section=director file=settings.ini') }}"
+        name: "{{ lookup('ini', 'vm_name section=director file=settings.ini') }}"
+        template: "{{ lookup('ini', 'vm_template section=director file=settings.ini') }}"
+        networks:
+          - name: "{{ lookup('ini', 'vm_public_pg section=director file=settings.ini') }}"
+            ip: "{{ lookup('ini', 'vm_public_ip section=director file=settings.ini') }}"
+            netmask: "{{ lookup('ini', 'vm_public_netmask section=director file=settings.ini') }}"
+            gateway: "{{ lookup('ini', 'vm_public_gw section=director file=settings.ini') }}"
+          # Although IP and Netmask are optional, error will be returned from vSphere API without them
+          - name: "{{ lookup('ini', 'vm_pxe_pg section=director file=settings.ini') }}"
+            ip: "192.168.3.1"
+            netmask: "255.255.255.0"
+          - name: "{{ lookup('ini', 'vm_external_pg section=director file=settings.ini') }}"
+            ip: "172.30.254.254"
+            netmask: "255.255.255.0"
+        customization:
+          hostname: "{{ lookup('ini', 'vm_hostname section=director file=settings.ini') }}"
+          password: "{{ lookup('ini', 'vm_password section=director file=settings.ini') }}"
+          dns_servers: "{{ lookup('ini', 'vm_public_nameserver section=director file=settings.ini') }}"
+        state: present
+      tags:
+        - create
+
+    - name: power on the vm
+      vmware_guest:
+        hostname: "{{ lookup('ini', 'vcenter_address section=director file=settings.ini')}}"
+        username: "{{ lookup('ini', 'vcenter_user section=director file=settings.ini') }}"
+        password: "{{ lookup('ini', 'vcenter_pass section=director file=settings.ini') }}"
+        validate_certs: no
+        datacenter: "{{ lookup('ini', 'vcenter_datacenter section=director file=settings.ini') }}"
+        name: "{{ lookup('ini', 'vm_name section=director file=settings.ini') }}"
+        state: poweredon
+        wait_for_ip_address: yes
+      tags:
+        - create
+
+    - name: wait for VM ready
+      pause:
+        seconds: 120
+      tags:
+        - create
+
+
+- name: prepare undercloud
+  hosts: director
+  vars_files: 
+    - var/main.yaml
+  tags: ['undercloud']
+
+  tasks:
+    - name: preare stack user
+      block:
+        - name: add user stack
+          user:
+            name: stack
+            password: "{{ lookup('ini', 'vm_password section=director file=settings.ini') | password_hash('sha512') }}"
+
+        - name: passwordless sudo for user stack
+          template:
+            src: templates/sudoers.stack
+            dest: /etc/sudoers.d/stack
+            mode: 0440
+
+        - name: create requried directories
+          file:
+            path: "{{ item }}"
+            state: directory
+          with_items:
+            - images
+            - templates
+          become: yes
+          become_user: stack
+          become_method: su
+
+    - name: configure system
+      vars:
+        vm_fqdn: "{{ lookup('ini', 'vm_fqdn section=director file=settings.ini') }}"
+      block:
+        - name: set hostname
+          shell: |
+            hostnamectl set-hostname {{ vm_fqdn }}
+            hostnamectl set-hostname --transient {{ vm_fqdn }}
+
+        - name: update hosts
+          vars:
+            ip: "{{ lookup('ini', 'vm_public_ip section=director file=settings.ini') }}"
+            hostname: "{{ lookup('ini', 'vm_hostname section=director file=settings.ini') }}"
+            fqdn: "{{ vm_fqdn }}"
+          template:
+            src: templates/hosts
+            dest: /etc/hosts
+
+        - name: insert dns stanza in /etc/resolv.conf for systemcm register
+          blockinfile:
+            path: /etc/resolv.conf
+            block: |
+              nameserver {{ lookup('ini', 'vm_public_nameserver section=director file=settings.ini') }}
+
+        - name: register system
+          shell: |
+            subscription-manager register \
+              --username {{ lookup('ini', 'subscription_user section=undercloud file=settings.ini') }}\
+              --password {{ lookup('ini', 'subscription_pass section=undercloud file=settings.ini') }}
+            subscription-manager refresh
+
+        - name: attach pools
+          shell: |
+            pool_str=$(echo {{ lookup('ini', 'osp_pools section=undercloud file=settings.ini') }} | sed -e 's/, \+/:/' | tr ' ' '_')
+            i=0
+            for p in $(echo $pool_str | sed -e 's/:/ /') ; do
+              for id in $(subscription-manager list --available --pool-only --matches="$(echo $p | sed -e 's/_/ /g')"); do
+                id_array[$i]=$id
+                i=$(( $i + 1 ))
+              done
+            done
+
+            for id in ${id_array[@]} ; do
+              subscription-manager attach --pool=$id
+            done
+
+
+        - name: enable repos
+          shell: |
+            repo_str="{{ lookup('ini', 'sys_repos section=undercloud file=settings.ini') }}"
+            for repo in $(echo $repo_str | sed -e 's/, */ /g'); do
+              sudo subscription-manager repos --enable=$repo
+            done
+
+        - name: yum update system check log in /root/yum_status.txt
+          shell: |
+            yum update -y >> /root/yum_status.txt
+        
+        - name: reboot host after 1 mins delay
+          shell : shutdown -r 1
+          async: 0
+          poll: 0
+          ignore_errors: true
+          tags:
+            - reboot
+
+        - name: wait for server to restart
+          local_action:
+            module: wait_for
+            host: "{{ lookup('ini', 'vm_public_ip section=director file=settings.ini') }}"
+            port: 22
+            delay: 110
+            timeout: 300
+          tags:
+            - wait
+
+        - name: install director pacakges
+          yum:
+            name: python-tripleoclient
+            state: present
+          tags:
+            - tripleo
+
+        - name: create undercloud.conf
+          template:
+            src: templates/undercloud.conf.j2
+            dest: /home/stack/undercloud.conf
+            owner: stack
+            group: stack
+            mode: '644'
+          tags:
+            - undercloudconf
+      
+        - name: install undercloud
+          shell:
+            openstack undercloud install
+          become: yes
+          become_user: stack
+          become_method: su
+          tags:
+            - undercloudinstall

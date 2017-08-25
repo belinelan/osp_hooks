@@ -1,0 +1,15 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<EMC>
+   <EcomServerIp>{{ ecom_ip }}</EcomServerIp>
+   <EcomServerPort>5989</EcomServerPort>
+   <EcomUserName>admin</EcomUserName>
+   <EcomPassword>#1Password</EcomPassword>
+   <Array>000{{ array_id }}</Array>
+   <PortGroups>
+        <PortGroup>{{ vmax_portgroup_iscsi }}</PortGroup>
+   </PortGroups>
+   <Pool>{{ vmax_pool }}</Pool>
+   <Timeout>1300</Timeout>
+   <SSLVerify>False</SSLVerify>
+</EMC>
+

@@ -56,5 +56,17 @@ intnic2: enp2s0f2
 # controller post configure
 publicnetstart: 10.1.1.51
 publicnetend: 10.1.1.250
+ctl_public_nic: enp2s0f3
+ctl_public_ip: 10.228.225.63
+ctl_public_gw: 10.228.225.1
+ctl_public_netmask: 255.255.255.0
 enabled_backends: tripleo_iscsi,unity_fc,vnx_fc
-#enabled_backends: tripleo_iscsi,vmax560_fc,unity_fc,vmax560_iscsi,unity_iscsi,vnx_fc,vnx_fc2,xio_fc
+#enabled_backends: tripleo_iscsi,vmax_fc,unity_fc,vmax_iscsi,unity_iscsi,vnx_fc,vnx_fc2,xio_fc
+
+# vmax backend  cinder_emc_config_vmax_fc.xml & cinder_emc_config_vmax_iscsi.xml 
+ecom_ip: 10.228.225.104
+array_id: 196701560
+vmax_portgroup_fc: lan_fc_2d27_3d31
+vmax_pool: SRP_1
+vmax_portgroup_iscsi: NATE_VMAX1560_v3E4E08_pg
+
