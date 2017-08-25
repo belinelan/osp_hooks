@@ -79,98 +79,151 @@
       become_user: stack
       tags: copy
       
-  
-- hosts: controller
+- hosts: overcloud
   vars_files:
     - var/main.yaml
   tags: ['overcloud']
 
   tasks:
-  - name: controller tenant network
-    shell: | 
-      . /home/heat-admin/overcloudrc
-      openstack network create default
-      openstack subnet create default --network default --gateway 172.20.1.1 --subnet-range 172.20.0.0/16
-      #openstack network create public --external --provider-network-type vlan --provider-physical-network datacentre --provider-segment {{ externalvlan }}
-      #openstack subnet create public --network public --dhcp --allocation-pool start={{ publicnetstart }},end={{ publicnetend }} --gateway {{ external_interface_route }} --subnet-range {{ external_net_cidr }}
-    tags:
-      - test
+    - name: copy multipath.conf
+      copy: 
+        src: files/multipath.conf
+        dest: /etc/
+      become: yes
+      become_user: root
 
-  - name: copy cirros image to controller
-    copy:
-      src: files/cirros-0.3.5-x86_64-disk.img
-      dest: /home/heat-admin/
+    - name: enable multipath service
+      service:
+        name: multipathd
+        state: started
+        enabled: yes
+      become: yes
+      become_user: root
 
-  - name: upload cirros to glance
-    shell: |
-      . /home/heat-admin/overcloudrc
-      glance image-create --name "cirros" --file /home/heat-admin/cirros-0.3.5-x86_64-disk.img --disk-format qcow2 --container-format bare 
+ # - name: configure iscsi ip
+    - name: enable volume_use_multipath=true in nova.conf
+      lineinfile:
+        path: /etc/nova/nova.conf
+        regexp: '#volume_use_multipath=false'
+        line: 'volume_use_multipath=true'
+      become: yes
+      become_user: root
 
-  - name: copy storops to controller
-    copy:
-      src: "{{ item }}"
-      dest: /home/heat-admin/
-    with_fileglob:
-      - files/storops/*
+    - name: restart nova service
+      service:
+        name: openstack-nova-compute
+        state: restarted
+      become: yes
+      become_user: root
 
-  - name: install storops lib
-    shell: |
-      yum localinstall -y /home/heat-admin/*rpm
-    become: yes
-    become_user: root
+- hosts: controller
+  vars_files:
+    - var/main.yaml
+  tags: ['controller']
 
-  - name: define cinder.conf enabled_backends
-    lineinfile:
-      path: /etc/cinder/cinder.conf
-      regexp: 'enabled_backends'
-      line: 'enabled_backends = {{ enabled_backends }}'
-    become: yes
-    become_user: root
-    tags: cinder
+  tasks:
+    - name: configure public IP and gateway
+      shell: |
+        ifconfig "{{ ctl_public_nic }}" "{{ ctl_public_ip }}" netmask "{{ ctl_public_netmask }}"
+        ip route delete default via "{{ externalroute }}" dev vlan"{{ externalvlan }}"
+        ip route add default via "{{ ctl_public_gw }}" dev "{{ ctl_public_nic }}"
+      become: yes
+      become_user: root
+      tags: public
 
-  - name: copy full cinder backends information to controller
-    copy:
-      src: files/cinder_backend
-      dest: /home/heat-admin/cinder_backend
-    tags: backend
+    - name: controller tenant network
+      shell: | 
+        . /home/heat-admin/overcloudrc
+        openstack network create default
+        openstack subnet create default --network default --gateway 172.20.1.1 --subnet-range 172.20.0.0/16
+        #openstack network create public --external --provider-network-type vlan --provider-physical-network datacentre --provider-segment {{ externalvlan }}
+        #openstack subnet create public --network public --dhcp --allocation-pool start={{ publicnetstart }},end={{ publicnetend }} --gateway {{ external_interface_route }} --subnet-range {{ external_net_cidr }}
+      tags:
+        - test
 
-  - name: append cinder backend information to cinder.conf
-    shell: |
-      cat /home/heat-admin/cinder_backend >> /etc/cinder/cinder.conf
-      chown root:cinder /etc/cinder/cinder.conf
-    become: yes
-    become_user: root
-    notify:
-      - restart cinder
+    - name: copy cirros image and navicli to controller
+      copy:
+        src: "{{ item }}"
+        dest: /home/heat-admin/
+      with_items:
+        - files/cirros-0.3.5-x86_64-disk.img
+        - files/NaviCLI-Linux-64-x86-en_US-7.33.9.1.55-1.x86_64.rpm
+      tags: files
+
+    - name: upload cirros to glance
+      shell: |
+        . /home/heat-admin/overcloudrc
+        glance image-create --name "cirros" --file /home/heat-admin/cirros-0.3.5-x86_64-disk.img --disk-format qcow2 --container-format bare 
+
+    - name: copy storops to controller
+      copy:
+        src: "{{ item }}"
+        dest: /home/heat-admin/
+      with_fileglob:
+        - files/storops/*
+
+    - name: install storops lib and navicli
+      shell: |
+        yum localinstall -y /home/heat-admin/python*rpm
+        rpm -ivh NaviCLI-Linux-64-x86-en_US-7.33.9.1.55-1.x86_64.rpm
+      become: yes
+      become_user: root
+      tags: navi
+
+    - name: define cinder.conf enabled_backends
+      lineinfile:
+        path: /etc/cinder/cinder.conf
+        regexp: 'enabled_backends'
+        line: 'enabled_backends = {{ enabled_backends }}'
+      become: yes
+      become_user: root
+      tags: cinder
+
+    - name: copy full cinder backends information to controller
+      copy:
+        src: files/cinder_backend
+        dest: /home/heat-admin/cinder_backend
+      tags: backend
+    
+    - name: copy vmax cinder_emc_config_vmax files
+      template: 
+        src: "templates/{{ item }}"
+        dest: /etc/cinder/
+        owner: root
+        group: root
+        mode: '644'
+      with_items:
+        - cinder_emc_config_vmax_fc.xml
+        - cinder_emc_config_vmax_iscsi.xml
+      become: yes
+      become_user: root
+      tags: xml
+
+    - name: append cinder backend information to cinder.conf
+      shell: |
+        cat /home/heat-admin/cinder_backend >> /etc/cinder/cinder.conf
+        chown root:cinder /etc/cinder/cinder.conf
+      become: yes
+      become_user: root
+      notify:
+        - restart cinder
  
-  - name: ensure cinder is running
-    service:
-      name: "{{ item }}"
-      state: started 
-    with_items:
-      - openstack-cinder-scheduler
-      - openstack-cinder-volume
-      - openstack-cinder-api
-    become: yes
-    become_user: root
-
-  - name: create volume type and set type key    
-    shell: |
-      . /home/heat-admin/overcloudrc
-      for i in $(echo {{ enabled_backends }} | sed "s/,/ /g"); do 
-        cinder type-create $i && cinder type-key $i set volume_backend_name=$i 
-      done
-    tags: key
-
-  handlers:
-    - name: restart cinder
+    - name: ensure cinder is running
       service:
         name: "{{ item }}"
-        state: restarted
+        state: restarted 
       with_items:
         - openstack-cinder-scheduler
         - openstack-cinder-volume
         - openstack-cinder-api
       become: yes
       become_user: root
-    
+
+    - name: create volume type and set type key    
+      shell: |
+        . /home/heat-admin/overcloudrc
+        for i in $(echo {{ enabled_backends }} | sed "s/,/ /g"); do 
+          cinder type-create $i && cinder type-key $i set volume_backend_name=$i 
+        done
+      tags: key
+

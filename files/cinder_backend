@@ -1,15 +1,15 @@
-[vmax560_fc]
+[vmax_fc]
 volume_driver = cinder.volume.drivers.dell_emc.vmax.fc.VMAXFCDriver
-cinder_emc_config_file = /etc/cinder/cinder_emc_config_vmax560_fc.xml
+cinder_emc_config_file = /etc/cinder/cinder_emc_config_vmax_fc.xml
 volume_backend_name = vmax560_fc
 driver_use_ssl = true
 driver_ssl_cert_verify = false
 driver_ssl_cert_path = /home/heat-admin/ca_cert.pem
 use_multipath_for_image_xfer = True
 
-[vmax560_iscsi]
+[vmax_iscsi]
 volume_driver = cinder.volume.drivers.dell_emc.vmax.iscsi.VMAXISCSIDriver
-cinder_emc_config_file = /etc/cinder/cinder_emc_config_vmax560_iscsi.xml
+cinder_emc_config_file = /etc/cinder/cinder_emc_config_vmax_iscsi.xml
 volume_backend_name = vmax560_iscsi
 driver_use_ssl = true
 driver_ssl_cert_verify = false
