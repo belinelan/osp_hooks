@@ -1,4 +1,3 @@
-
 [vmax560_fc]
 volume_driver = cinder.volume.drivers.dell_emc.vmax.fc.VMAXFCDriver
 cinder_emc_config_file = /etc/cinder/cinder_emc_config_vmax560_fc.xml
@@ -18,21 +17,21 @@ driver_ssl_cert_path = /home/heat-admin/ca_cert.pem
 use_multipath_for_image_xfer = True
 
 [unity_fc]
-torage_protocol = FC
-an_ip = 10.228.227.203 
-an_login = admin
-an_password = Password123!
-olume_driver = cinder.volume.drivers.dell_emc.unity.Driver
-olume_backend_name = unity_fc
-nity_io_ports = spa_iom_1_fc3, spb_iom_1_fc3
-nity_storage_pool_names = Unity-Qual-Openstack
-se_multipath_for_image_xfer = True
+storage_protocol = FC
+san_ip = x.x.x.x 
+san_login = admin
+san_password = xxxx
+volume_driver = cinder.volume.drivers.dell_emc.unity.Driver
+volume_backend_name = unity_fc
+unity_io_ports = spa_iom_1_fc3, spb_iom_1_fc3
+unity_storage_pool_names = Unity-Qual-Openstack
+use_multipath_for_image_xfer = True
 
 [unity_iscsi]
 storage_protocol = iSCSI
-san_ip = 10.228.227.203
+san_ip = x.x.x.x
 san_login = admin
-san_password = Password123!
+san_password = xxxx
 volume_driver = cinder.volume.drivers.dell_emc.unity.Driver
 volume_backend_name = unity_iscsi
 unity_io_ports = *_eth3
@@ -41,9 +40,9 @@ use_multipath_for_image_xfer = True
 
 [vnx_fc]
 volume_backend_name = vnx_fc
-san_ip = 10.228.227.225
+san_ip = x.x.x.x
 san_login = sysadmin
-san_password = sysadmin
+san_password = xxxx
 storage_vnx_authentication_type = global
 naviseccli_path = /opt/Navisphere/bin/naviseccli
 volume_driver = cinder.volume.drivers.dell_emc.vnx.driver.VNXDriver
@@ -54,9 +53,9 @@ san_thin_provision = true
 
 [vnx_fc2]
 volume_backend_name = vnx_fc2
-san_ip = 10.228.227.225
+san_ip = x.x.x.x
 san_login = sysadmin
-san_password = sysadmin
+san_password = xxxx
 storage_vnx_authentication_type = global
 naviseccli_path = /opt/Navisphere/bin/naviseccli
 volume_driver = cinder.volume.drivers.dell_emc.vnx.driver.VNXDriver
@@ -65,13 +64,29 @@ storage_protocol = fc
 storage_vnx_pool_names = OpenstackCI2
 san_thin_provision = true
 
+[vnx_iscsi]
+volume_backend_name = vnx_iscsi
+san_ip = x.x.x.x
+san_login = sysadmin
+san_password = xxxx
+storage_vnx_authentication_type = global
+naviseccli_path = /opt/Navisphere/bin/naviseccli
+volume_driver = cinder.volume.drivers.dell_emc.vnx.driver.VNXDriver
+initiator_auto_registration = True
+storage_protocol = iscsi
+storage_vnx_pool_names = OpenstackCI
+iscsi_initiators = {"lxh11ser14ctl00.localdomain":["172.16.100.223", "172.16.101.223"],"lxh11ser15com00.localdomain":["172.16.100.224", "172.16.101.224"]}
+san_thin_provision = true
+use_multipath_for_image_xfer = True
+io_port_list = A-5-0,B-5-0
+
 [coprfc]
 volume_driver = cinder.volume.drivers.coprhd.fc.EMCCoprHDFCDriver
 volume_backend_name = coprfc
-coprhd_hostname = 10.228.225.135
+coprhd_hostname = x.x.x.x
 coprhd_port = 4443
 coprhd_username = root
-coprhd_password = #1Danger0us
+coprhd_password = xxxx
 coprhd_tenant = 'Provider Tenant'
 coprhd_project = openstack
 coprhd_varray = xio123
@@ -79,10 +94,10 @@ coprhd_varray = xio123
 [copriscsi]
 volume_driver = cinder.volume.drivers.coprhd.iscsi.EMCCoprHDISCSIDriver
 volume_backend_name = copriscsi
-coprhd_hostname = 10.228.225.135
+coprhd_hostname = x.x.x.x
 coprhd_port = 4443
 coprhd_username = root
-coprhd_password = #1Danger0us
+coprhd_password = xxxx
 coprhd_tenant = 'Provider Tenant'
 coprhd_project = openstack
 coprhd_varray = vnx225
@@ -90,10 +105,10 @@ coprhd_varray = vnx225
 [xio_fc]
 volume_backend_name = xio_fc
 volume_driver = cinder.volume.drivers.emc.xtremio.XtremIOFibreChannelDriver
-san_ip = 10.228.225.123
+san_ip = x.x.x.x
 xtremio_cluster_name = 96Y-XIO 
 san_login = admin
-san_password = Xtrem10
+san_password = xxxx
 max_over_subscription_ratio = 40.0
 use_multipath_for_image_xfer = True
 enforce_multipath_for_image_xfer = True
@@ -102,10 +117,10 @@ num_volume_device_scan_tries = 10
 [xio_scsi]
 volume_backend_name = xio_iscsi
 volume_driver = cinder.volume.drivers.emc.xtremio.XtremIOISCSIDriver
-san_ip = 10.228.225.123
+san_ip = x.x.x.x
 xtremio_cluster_name = 96Y-XIO
 san_login = admin
-san_password = Xtrem10
+san_password = xxxx
 max_over_subscription_ratio = 20
 use_multipath_for_image_xfer = true
 

@@ -29,4 +29,4 @@ How to Use
     * hosts file (only director IP, leave overcloud section untouched)
     * var/main.yml
     * settings.ini
-    * files/cinder_backends 
+    * files/cinder_backends (modify x.x.x.x, xxxx for real ip and password) 
