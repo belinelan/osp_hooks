@@ -205,10 +205,16 @@
         chown root:cinder /etc/cinder/cinder.conf
       become: yes
       become_user: root
-      notify:
-        - restart cinder
- 
-    - name: ensure cinder is running
+      tags: append
+    
+    - name: create volume type and set type key
+      shell: |
+        . /home/heat-admin/overcloudrc
+        for i in $(echo {{ enabled_backends }} | sed "s/,/ /g"); do 
+          cinder type-create $i && cinder type-key $i set volume_backend_name=$i
+        done
+      tags: key
+    - name: restart cinder service
       service:
         name: "{{ item }}"
         state: restarted 
@@ -218,12 +224,6 @@
         - openstack-cinder-api
       become: yes
       become_user: root
+      tags: service
 
-    - name: create volume type and set type key    
-      shell: |
-        . /home/heat-admin/overcloudrc
-        for i in $(echo {{ enabled_backends }} | sed "s/,/ /g"); do 
-          cinder type-create $i && cinder type-key $i set volume_backend_name=$i 
-        done
-      tags: key
 
