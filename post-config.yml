@@ -100,7 +100,6 @@
       become: yes
       become_user: root
 
- # - name: configure iscsi ip
     - name: enable volume_use_multipath=true in nova.conf
       lineinfile:
         path: /etc/nova/nova.conf
@@ -116,15 +115,29 @@
       become: yes
       become_user: root
 
+- hosts: compute
+  vars_files:
+    - var/main.yaml
+  tasks:
+    - name: configure iscsi ip
+      shell: |
+        ifconfig "{{ com_iscsi_nic1 }}" "{{ com_iscsi_ip1 }}" netmask "{{ ctl_iscsi_netmask }}"
+        ifconfig "{{ com_iscsi_nic2 }}" "{{ com_iscsi_ip2 }}" netmask "{{ ctl_iscsi_netmask }}"
+      become: yes
+      become_user: root
+      tags: iscsi
+
 - hosts: controller
   vars_files:
     - var/main.yaml
   tags: ['controller']
 
   tasks:
-    - name: configure public IP and gateway
+    - name: configure public IP,iscsi ip and gateway
       shell: |
         ifconfig "{{ ctl_public_nic }}" "{{ ctl_public_ip }}" netmask "{{ ctl_public_netmask }}"
+        ifconfig "{{ ctl_iscsi_nic1 }}" "{{ ctl_iscsi_ip1 }}" netmask "{{ ctl_iscsi_netmask }}"
+        ifconfig "{{ ctl_iscsi_nic2 }}" "{{ ctl_iscsi_ip2 }}" netmask "{{ ctl_iscsi_netmask }}"
         ip route delete default via "{{ externalroute }}" dev vlan"{{ externalvlan }}"
         ip route add default via "{{ ctl_public_gw }}" dev "{{ ctl_public_nic }}"
       become: yes

@@ -53,6 +53,13 @@ pxenic: enp2s0f0
 intnic: enp2s0f1
 intnic2: enp2s0f2
 
+# compute post configure
+com_iscsi_nic1: enp6s0f0
+com_iscsi_nic2: enp6s0f1
+com_iscsi_ip1: 172.16.100.69
+com_iscsi_ip2: 172.16.101.69
+
+
 # controller post configure
 publicnetstart: 10.1.1.51
 publicnetend: 10.1.1.250
@@ -60,6 +67,11 @@ ctl_public_nic: enp2s0f3
 ctl_public_ip: x.x.x.x
 ctl_public_gw: x.x.x.x
 ctl_public_netmask: 255.255.255.0
+ctl_iscsi_nic1: enp6s0f0
+ctl_iscsi_nic2: enp6s0f1
+ctl_iscsi_ip1: 172.16.100.63
+ctl_iscsi_ip2: 172.16.101.63
+ctl_iscsi_netmask: 255.255.255.0
 enabled_backends: tripleo_iscsi,unity_fc,vnx_fc
 #enabled_backends: tripleo_iscsi,vmax_fc,unity_fc,vmax_iscsi,unity_iscsi,vnx_fc,vnx_fc2,xio_fc
 
